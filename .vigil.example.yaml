@@ -1,0 +1,53 @@
+# .vigil.yaml - vigil configuration
+# Copy this file to .vigil.yaml and customize as needed.
+#
+# Documentation: https://github.com/org/vigil
+
+# Paths to scan
+include: ["src/", "lib/", "app/"]
+exclude: ["node_modules/", ".venv/", "__pycache__/", ".git/", "dist/", "build/"]
+test_dirs: ["tests/", "test/", "__tests__/"]
+
+# Minimum severity to fail (exit code 1)
+# Options: critical, high, medium, low
+fail_on: "high"
+
+# Languages to scan
+languages: [python, javascript]
+
+# Dependency analysis (CAT-01)
+deps:
+  verify_registry: true
+  min_age_days: 30
+  min_weekly_downloads: 100
+  similarity_threshold: 0.85
+  cache_ttl_hours: 24
+  # offline_mode: true  # Uncomment to skip registry HTTP checks
+
+# Auth pattern analysis (CAT-02)
+auth:
+  max_token_lifetime_hours: 24
+  require_auth_on_mutating: true
+  cors_allow_localhost: true
+
+# Secret detection (CAT-03)
+secrets:
+  min_entropy: 3.0
+  check_env_example: true
+  # placeholder_patterns:
+  #   - "changeme"
+  #   - "your-.*-here"
+  #   - "TODO"
+
+# Test quality analysis (CAT-06)
+tests:
+  min_assertions_per_test: 1
+  detect_trivial_asserts: true
+  detect_mock_mirrors: true
+
+# Rule overrides
+# rules:
+#   DEP-004:
+#     severity: "low"        # Downgrade severity
+#   AUTH-003:
+#     enabled: false          # Disable rule entirely
