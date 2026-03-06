@@ -9,7 +9,7 @@
 
 | Fase | Nombre | Estado | Tests |
 |------|--------|--------|-------|
-| FASE 0 | Scaffolding + Config + Core | COMPLETADA | 125 |
+| FASE 0 | Scaffolding + Config + Core | COMPLETADA (QA done) | 350 |
 | FASE 1 | Dependency Analyzer | Pendiente | — |
 | FASE 2 | Auth & Secrets Analyzers | Pendiente | — |
 | FASE 3 | Test Quality Analyzer | Pendiente | — |
@@ -18,11 +18,10 @@
 | FASE 6 | Data + Polish | Pendiente | — |
 
 **Metricas actuales:**
-- Lineas de codigo fuente: ~1,743 (src/vigil/)
-- Lineas de tests: ~1,182 (tests/)
-- Tests totales: 125 (todos pasando)
+- Tests totales: 350 (todos pasando, 0 warnings)
+- Cobertura: 93% (671 statements, 49 missed)
 - Archivos fuente: 23
-- Archivos de test: 10
+- Archivos de test: 19
 
 ---
 
@@ -136,7 +135,7 @@ Implementados exactamente segun el plan:
 - `DepsConfig` — verify_registry, min_age_days, min_weekly_downloads, similarity_threshold, cache_ttl_hours, offline_mode
 - `AuthConfig` — max_token_lifetime_hours, require_auth_on_mutating, cors_allow_localhost
 - `SecretsConfig` — min_entropy, check_env_example, placeholder_patterns (12 patterns por defecto)
-- `TestsConfig` — min_assertions_per_test, detect_trivial_asserts, detect_mock_mirrors
+- `TestQualityConfig` — min_assertions_per_test, detect_trivial_asserts, detect_mock_mirrors
 - `OutputConfig` — format, output_file, colors, verbose, show_suggestions
 - `RuleOverride` — enabled (bool|None), severity (str|None)
 - Campos de runtime agregados a `ScanConfig`: categories, rules_filter, exclude_rules
@@ -289,6 +288,58 @@ No requiere tests propios — se valida indirectamente via tests del ScanEngine 
 
 - `.vigil.example.yaml` — configuracion de ejemplo documentada
 - `.gitignore` — exclusiones para Python, venvs, IDEs, cache, testing
+
+### F0.QA — Auditoria de calidad y tests adicionales
+
+**Estado: COMPLETADA**
+
+Se realizo una auditoria exhaustiva del codigo de FASE 0 con el rol de ingeniero senior de QA. Se encontraron 15 hallazgos (6 bugs, 4 robustez, 2 consistencia, 3 menores) y se corrigieron los 6 bugs.
+
+**Bugs corregidos:**
+
+1. **`file_collector.py:96`** — Exclude usaba substring match (`"build" in path_str`), lo que causaba que `"build/"` excluyera tambien `"rebuild/"`. Corregido a path-component matching via `file_path.parts`.
+2. **`schema.py:56`** — `TestsConfig` causaba `PytestCollectionWarning` porque pytest intentaba recolectarla como clase de test. Renombrada a `TestQualityConfig` + `__test__ = False`.
+3. **`schema.py:94`** — `fail_on` era `str` sin validacion, aceptaba cualquier valor como `"banana"` que luego causaba `ValueError` en el CLI. Cambiado a `Literal["critical","high","medium","low","info"]`.
+4. **`loader.py:164`** — `generate_config_yaml` producia listas en sintaxis Python (`['src/', 'lib/']`) que no es YAML valido. Creado helper `_yaml_list()` que genera `["src/", "lib/"]` (flow sequence YAML valido). Ahora el roundtrip `vigil init` -> `load_config` funciona.
+5. **`sarif.py:56`** — `rule.name.replace(" ", "")` generaba `"Hallucinateddependency"` en vez de PascalCase. Corregido a `"".join(w.capitalize() for w in name.split())` -> `"HallucinatedDependency"`.
+6. **`cli.py:133`** — `--output reports/scan.json` fallaba con `FileNotFoundError` si el directorio padre no existia. Agregado `parent.mkdir(parents=True, exist_ok=True)` antes de escribir.
+
+**Issues documentados (no corregidos, para fases futuras):**
+
+- `engine.py`: campo `include` en `ScanConfig` existe pero nunca se pasa a `collect_files` — no tiene efecto
+- `cli.py`: `_get_changed_files` no maneja filenames con espacios en git status `--porcelain`
+- `rules.py`: `DEP-007` y `SEC-006` son CRITICAL sin `cwe_ref` asignado
+
+**Tests nuevos: 225 tests en 9 archivos:**
+
+| Archivo | Tests | Cobertura |
+|---------|-------|-----------|
+| `test_core/test_finding_edge_cases.py` | 16 | Severity/Category como string, metadata aislamiento, `is_blocking` parametrizado |
+| `test_core/test_engine_edge_cases.py` | 17 | Multi-analyzer, error recovery, overrides combinados, sort estable |
+| `test_core/test_file_collector_edge_cases.py` | 25 | Exclude por componente, extensiones JS, dep files, symlinks, binarios |
+| `test_config/test_schema_edge_cases.py` | 12 | Validacion `fail_on`, aislamiento de defaults, override parcial nested |
+| `test_config/test_loader_edge_cases.py` | 24 | YAML edge cases, merge logic, roundtrip, presets |
+| `test_config/test_rules_edge_cases.py` | 20 | Integridad catalogo, IDs secuenciales, severidades vs plan, CWE refs |
+| `test_reports/test_formatters_edge_cases.py` | 28 | Todos los formatters: chars especiales, unicode, SARIF severity mapping |
+| `test_cli_edge_cases.py` | 34 | Todos los commands/flags, formatos, exit codes, output nested dirs |
+| `test_integration.py` | 14 | Pipeline completo scan, todos los formatters con datos realistas |
+| `test_logging.py` | 3 | Niveles de log, idempotencia |
+
+**1 test existente actualizado:** `test_config/test_schema.py` — `TestsConfig` -> `TestQualityConfig`
+
+**Cobertura por modulo:**
+
+| Modulo | Cobertura |
+|--------|-----------|
+| `core/finding.py` | 100% |
+| `core/engine.py` | 99% |
+| `core/file_collector.py` | 100% |
+| `config/schema.py` | 100% |
+| `config/rules.py` | 100% |
+| `config/loader.py` | 95% |
+| `reports/*` | 95-100% |
+| `cli.py` | 81% |
+| `logging/setup.py` | 100% |
 
 ---
 

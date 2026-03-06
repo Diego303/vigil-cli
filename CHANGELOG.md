@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Finding model** — `Finding`, `Severity`, `Category`, `Location` dataclasses as the backbone for all scan results
 - **ScanResult** — aggregates findings with severity counts, threshold filtering, error tracking, and duration
 - **Configuration system**
-  - Pydantic v2 models: `ScanConfig`, `DepsConfig`, `AuthConfig`, `SecretsConfig`, `TestsConfig`, `OutputConfig`, `RuleOverride`
+  - Pydantic v2 models: `ScanConfig`, `DepsConfig`, `AuthConfig`, `SecretsConfig`, `TestQualityConfig`, `OutputConfig`, `RuleOverride`
   - YAML config loader with automatic discovery (`.vigil.yaml` traversing up the directory tree)
   - Three-layer merge: defaults <- YAML file <- CLI flags
   - Strategy presets: `strict`, `standard`, `relaxed`
@@ -43,4 +43,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`--changed-only`** — git-aware mode for pre-commit hooks (scans only changed files)
 - **`--offline`** — skip all HTTP requests to registries
 - **`python -m vigil`** support
-- **125 tests** covering core models, engine, config, CLI, and all formatters
+- **350 tests** covering core models, engine, config, CLI, all formatters, and edge cases
+
+### Fixed
+
+- **File collector exclude pattern over-matching** — exclude `build/` no longer excludes `rebuild/` (changed from substring to path-component matching)
+- **Config YAML generation** — `generate_config_yaml()` now produces valid YAML flow sequences instead of Python list repr syntax
+- **SARIF rule name PascalCase** — rule names now properly capitalize each word (e.g., `PackageNotInRegistry` instead of `Package not in registry`)
+- **`--output` with nested directories** — parent directories are created automatically when they don't exist
+- **`fail_on` validation** — `ScanConfig.fail_on` now uses `Literal` type and rejects invalid values at parse time
+- **`TestQualityConfig` pytest collection warning** — renamed from `TestsConfig` and added `__test__ = False` to prevent pytest from trying to collect it as a test class

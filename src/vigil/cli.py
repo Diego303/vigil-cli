@@ -130,7 +130,9 @@ def scan(
     report = formatter.format(result)
 
     if output:
-        Path(output).write_text(report, encoding="utf-8")
+        output_path = Path(output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(report, encoding="utf-8")
         if output_format == "human":
             click.echo(report)
     else:

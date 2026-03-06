@@ -10,7 +10,7 @@ from vigil.config.schema import (
     RuleOverride,
     ScanConfig,
     SecretsConfig,
-    TestsConfig,
+    TestQualityConfig,
 )
 
 
@@ -83,9 +83,9 @@ class TestSecretsConfig:
         assert "changeme" in config.placeholder_patterns
 
 
-class TestTestsConfig:
+class TestTestQualityConfig:
     def test_defaults(self):
-        config = TestsConfig()
+        config = TestQualityConfig()
         assert config.min_assertions_per_test == 1
         assert config.detect_trivial_asserts is True
         assert config.detect_mock_mirrors is True

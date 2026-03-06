@@ -89,11 +89,11 @@ def _should_include_file(
     """Determina si un archivo debe incluirse en el scan."""
     path_str = str(file_path)
 
-    # Excluir por patrones
+    # Excluir por patrones (match por componente de path, no substring)
+    parts = file_path.parts
     for pattern in exclude:
-        # Normalizar: "node_modules/" -> "node_modules"
         normalized = pattern.rstrip("/")
-        if normalized in path_str:
+        if normalized in parts:
             return False
 
     # Siempre incluir archivos de dependencias

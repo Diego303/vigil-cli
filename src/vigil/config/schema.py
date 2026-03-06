@@ -1,5 +1,7 @@
 """Pydantic models de configuracion de vigil."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -53,8 +55,10 @@ class SecretsConfig(BaseModel):
     )
 
 
-class TestsConfig(BaseModel):
+class TestQualityConfig(BaseModel):
     """Configuracion del analyzer de test quality."""
+
+    __test__ = False  # Prevent pytest collection
 
     min_assertions_per_test: int = 1
     detect_trivial_asserts: bool = True
@@ -91,13 +95,13 @@ class ScanConfig(BaseModel):
     test_dirs: list[str] = Field(default_factory=lambda: ["tests/", "test/", "__tests__/"])
 
     # Severidades
-    fail_on: str = "high"
+    fail_on: Literal["critical", "high", "medium", "low", "info"] = "high"
 
     # Analyzers
     deps: DepsConfig = Field(default_factory=DepsConfig)
     auth: AuthConfig = Field(default_factory=AuthConfig)
     secrets: SecretsConfig = Field(default_factory=SecretsConfig)
-    tests: TestsConfig = Field(default_factory=TestsConfig)
+    tests: TestQualityConfig = Field(default_factory=TestQualityConfig)
     output: OutputConfig = Field(default_factory=OutputConfig)
 
     # Rule overrides

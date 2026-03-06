@@ -234,10 +234,10 @@ cd vigil
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
-# Run tests
+# Run tests (350 tests)
 pytest tests/ -v
 
-# Run with coverage
+# Run with coverage (~93%)
 pytest tests/ -v --cov=vigil
 
 # Lint
