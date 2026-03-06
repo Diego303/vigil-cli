@@ -29,7 +29,7 @@ pip install -e ".[dev]"
 
 ```bash
 vigil --version
-# vigil, version 0.1.0
+# vigil, version 0.2.0
 ```
 
 ## Primer scan
@@ -43,7 +43,7 @@ vigil scan src/
 Ejemplo de salida cuando no hay problemas:
 
 ```
-  vigil v0.1.0 — scanned 42 files
+  vigil v0.2.0 — scanned 42 files
 
   No findings.
 
@@ -55,7 +55,7 @@ Ejemplo de salida cuando no hay problemas:
 Ejemplo de salida con hallazgos:
 
 ```
-  vigil v0.1.0 — scanned 42 files
+  vigil v0.2.0 — scanned 42 files
 
   X CRITICAL  DEP-001  requirements.txt:14
     Package 'python-jwt-utils' does not exist in pypi.
@@ -115,6 +115,26 @@ vigil organiza sus reglas en categorias:
 | `1` | Se encontraron findings por encima del threshold |
 | `2` | Error de ejecucion (config invalida, error de red, etc.) |
 
+## Que esta activo ahora
+
+En la version actual (v0.2.0), el **Dependency Analyzer** esta completamente funcional:
+
+- Detecta paquetes que no existen en PyPI/npm (slopsquatting)
+- Detecta nombres similares a paquetes populares (typosquatting)
+- Verifica que las versiones pinneadas existan
+- Detecta paquetes sospechosamente nuevos
+- Detecta paquetes sin repositorio fuente
+
+```bash
+# Verificar dependencias del proyecto
+vigil deps
+
+# Solo checks estaticos (sin HTTP)
+vigil deps --offline
+```
+
+Los analyzers de Auth, Secrets y Test Quality se estan implementando y estaran disponibles en versiones futuras.
+
 ## Siguientes pasos
 
 - Genera un archivo de configuracion: `vigil init`
@@ -122,4 +142,5 @@ vigil organiza sus reglas en categorias:
 - Analiza solo dependencias: `vigil deps --verify`
 - Analiza solo calidad de tests: `vigil tests tests/`
 - Integra vigil en tu CI/CD: ver [ci-cd.md](ci-cd.md)
+- Consulta los analyzers activos: ver [analizadores.md](analizadores.md)
 - Consulta la referencia CLI completa: ver [cli.md](cli.md)

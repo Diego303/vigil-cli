@@ -23,6 +23,12 @@ vigil-cli/
     analyzers/
       __init__.py
       base.py                     # BaseAnalyzer Protocol
+      deps/                       # CAT-01: Dependency Analyzer
+        __init__.py
+        analyzer.py               # DependencyAnalyzer (DEP-001..007)
+        parsers.py                # Parsers para requirements.txt, pyproject.toml, package.json
+        registry_client.py        # Cliente HTTP para PyPI/npm con cache local
+        similarity.py             # Levenshtein + corpus de paquetes populares
     reports/
       __init__.py
       formatter.py                # BaseFormatter Protocol + factory
@@ -37,6 +43,8 @@ vigil-cli/
   tests/
     conftest.py                   # Fixtures globales
     test_cli.py                   # Tests del CLI
+    test_cli_edge_cases.py        # Edge cases del CLI
+    test_integration.py           # Tests de integracion end-to-end
     test_core/
       test_finding.py
       test_engine.py
@@ -47,7 +55,25 @@ vigil-cli/
       test_rules.py
     test_reports/
       test_formatters.py
+    test_analyzers/
+      test_deps/
+        test_parsers.py           # Tests de parsers de dependencias
+        test_parsers_qa.py        # QA: edge cases (markers, BOM, CRLF, Unicode)
+        test_registry_client.py   # Tests del cliente de registries
+        test_registry_client_qa.py # QA: cache, sanitize, response parsing
+        test_similarity.py        # Tests de deteccion de typosquatting
+        test_similarity_qa.py     # QA: corpus integrity, false positives, PEP 503
+        test_analyzer.py          # Tests del DependencyAnalyzer
+        test_analyzer_qa.py       # QA: false positives/negatives, boundaries
+        test_integration_qa.py    # QA: engine+analyzer, CLI+deps, regression
     fixtures/                     # Archivos de prueba
+      deps/                       # Fixtures de dependencias
+        valid_project/            #   Proyecto con deps legitimas
+        hallucinated_deps/        #   Deps alucinadas/inventadas
+        npm_project/              #   Proyecto npm con deps inventadas
+        clean_project/            #   Proyecto limpio (sin findings)
+        vulnerable_project/       #   Mix de deps legitimas y sospechosas
+        edge_cases/               #   Empty, comments-only, markers, URLs, malformed
 ```
 
 ---
@@ -154,9 +180,9 @@ El `ScanEngine` es el orquestador central. Su metodo `run()` ejecuta el pipeline
 
 `file_collector.collect_files()` recibe las rutas del usuario y retorna una lista de archivos a escanear:
 
-- Resuelve directorios recursivamente con `Path.rglob("*")`.
+- Recorre directorios recursivamente con `os.walk()` y **pruning in-place** de directorios excluidos (`dirnames[:] = [...]`). Esto evita recorrer `.venv/`, `node_modules/`, etc., lo cual es critico para rendimiento (un `.venv/` tipico contiene miles de archivos).
 - Filtra por extensiones de lenguaje (`LANGUAGE_EXTENSIONS`).
-- Excluye patrones configurados (`node_modules/`, `.venv/`, etc.).
+- Excluye patrones configurados por componente de path (no por substring).
 - Siempre incluye archivos de dependencias (`requirements.txt`, `package.json`, etc.) independientemente del filtro de lenguaje.
 - Deduplica preservando el orden.
 
@@ -235,6 +261,81 @@ class DependencyAnalyzer:
 ```
 
 No se requiere herencia — solo satisfacer el Protocol (structural typing).
+
+### Registro de analyzers
+
+En `cli.py`, los analyzers se registran mediante `_register_analyzers(engine)` antes de ejecutar el scan:
+
+```python
+def _register_analyzers(engine: ScanEngine) -> None:
+    from vigil.analyzers.deps import DependencyAnalyzer
+    engine.register_analyzer(DependencyAnalyzer())
+```
+
+Esta funcion se invoca en los comandos `scan`, `deps` y `tests`.
+
+---
+
+## DependencyAnalyzer
+
+El primer analyzer implementado. Detecta dependencias alucinadas, typosquatting, paquetes nuevos sospechosos, versiones inexistentes y paquetes sin repositorio fuente.
+
+### Arquitectura interna
+
+```
+DependencyAnalyzer.analyze(files, config)
+    |
+    v
+[1. _extract_roots(files)]  -->  Directorios raiz unicos
+    |
+    v
+[2. find_and_parse_all(root)]  -->  Lista de DeclaredDependency
+    |                                (parsers: req.txt, pyproject.toml, package.json)
+    v
+[3. _deduplicate_deps()]  -->  Deps unicos por nombre+ecosystem
+    |
+    v
+[4. load_popular_packages()]  -->  Corpus para typosquatting
+    |
+    +---> [5a. _check_registries()]  -->  DEP-001, DEP-002, DEP-005, DEP-007
+    |         |                           (solo si online + verify_registry)
+    |         v
+    |     RegistryClient.check(name, ecosystem)
+    |         |
+    |         +---> Cache hit? return cached
+    |         +---> HTTP GET PyPI/npm -> PackageInfo -> cache
+    |
+    +---> [5b. find_similar_popular()]  -->  DEP-003 (siempre, no requiere red)
+    |
+    v
+  list[Finding]
+```
+
+### Componentes
+
+| Modulo | Responsabilidad |
+|--------|----------------|
+| `parsers.py` | Parsea requirements.txt, pyproject.toml, package.json en `DeclaredDependency` |
+| `registry_client.py` | HTTP client para PyPI/npm con cache en disco (`~/.cache/vigil/registry/`) |
+| `similarity.py` | Levenshtein distance, normalizacion PEP 503, corpus de paquetes populares |
+| `analyzer.py` | Orquesta parsers + registry + similarity, genera findings |
+
+### Reglas implementadas
+
+| Regla | Requiere red | Descripcion |
+|-------|-------------|-------------|
+| DEP-001 | Si | Paquete no existe en registro |
+| DEP-002 | Si | Paquete creado hace menos de N dias |
+| DEP-003 | No | Nombre similar a paquete popular |
+| DEP-005 | Si | Sin repositorio fuente |
+| DEP-007 | Si | Version pinneada no existe |
+
+### Reglas diferidas (V1)
+
+| Regla | Razon |
+|-------|-------|
+| DEP-004 | Requiere API de estadisticas de descargas |
+| DEP-006 | Requiere parser de imports AST |
 
 ---
 

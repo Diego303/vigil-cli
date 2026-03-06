@@ -14,10 +14,17 @@ def runner():
     return CliRunner()
 
 
+@pytest.fixture
+def clean_dir(tmp_path):
+    """Directorio limpio sin fixtures problemáticas."""
+    (tmp_path / "app.py").write_text("x = 1")
+    return tmp_path
+
+
 class TestScanCommand:
-    def test_scan_default_path(self, runner):
-        """scan sin argumentos escanea directorio actual."""
-        result = runner.invoke(main, ["scan"])
+    def test_scan_default_path(self, runner, clean_dir):
+        """scan con directorio limpio."""
+        result = runner.invoke(main, ["scan", str(clean_dir), "--offline"])
         assert result.exit_code == 0
 
     def test_scan_multiple_paths(self, runner, tmp_path):
@@ -27,19 +34,19 @@ class TestScanCommand:
         dir2.mkdir()
         (dir1 / "app.py").write_text("x = 1")
         (dir2 / "util.py").write_text("y = 2")
-        result = runner.invoke(main, ["scan", str(dir1), str(dir2)])
+        result = runner.invoke(main, ["scan", str(dir1), str(dir2), "--offline"])
         assert result.exit_code == 0
 
-    def test_scan_json_output_is_valid(self, runner):
-        result = runner.invoke(main, ["scan", ".", "--format", "json"])
+    def test_scan_json_output_is_valid(self, runner, clean_dir):
+        result = runner.invoke(main, ["scan", str(clean_dir), "--format", "json", "--offline"])
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert isinstance(data["findings"], list)
         assert isinstance(data["files_scanned"], int)
         assert isinstance(data["duration_seconds"], (int, float))
 
-    def test_scan_sarif_output_valid_structure(self, runner):
-        result = runner.invoke(main, ["scan", ".", "--format", "sarif"])
+    def test_scan_sarif_output_valid_structure(self, runner, clean_dir):
+        result = runner.invoke(main, ["scan", str(clean_dir), "--format", "sarif", "--offline"])
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["version"] == "2.1.0"
@@ -48,8 +55,8 @@ class TestScanCommand:
         assert "tool" in data["runs"][0]
         assert "results" in data["runs"][0]
 
-    def test_scan_junit_output_valid_xml(self, runner):
-        result = runner.invoke(main, ["scan", ".", "--format", "junit"])
+    def test_scan_junit_output_valid_xml(self, runner, clean_dir):
+        result = runner.invoke(main, ["scan", str(clean_dir), "--format", "junit", "--offline"])
         assert result.exit_code == 0
         root = ET.fromstring(result.output)
         assert root.tag == "testsuites"
@@ -57,76 +64,76 @@ class TestScanCommand:
         assert suite is not None
         assert suite.get("name") == "vigil"
 
-    def test_scan_output_file_json(self, runner, tmp_path):
-        output = tmp_path / "report.json"
+    def test_scan_output_file_json(self, runner, clean_dir):
+        output = clean_dir / "report.json"
         result = runner.invoke(
-            main, ["scan", ".", "--format", "json", "--output", str(output)]
+            main, ["scan", str(clean_dir), "--format", "json", "--output", str(output), "--offline"]
         )
         assert result.exit_code == 0
         assert output.exists()
         data = json.loads(output.read_text())
         assert "findings" in data
 
-    def test_scan_output_file_nested_dir(self, runner, tmp_path):
+    def test_scan_output_file_nested_dir(self, runner, clean_dir):
         """--output con directorios inexistentes los crea automaticamente."""
-        output = tmp_path / "reports" / "sub" / "report.json"
+        output = clean_dir / "reports" / "sub" / "report.json"
         result = runner.invoke(
-            main, ["scan", ".", "--format", "json", "--output", str(output)]
+            main, ["scan", str(clean_dir), "--format", "json", "--output", str(output), "--offline"]
         )
         assert result.exit_code == 0
         assert output.exists()
 
-    def test_scan_output_file_sarif(self, runner, tmp_path):
-        output = tmp_path / "report.sarif"
+    def test_scan_output_file_sarif(self, runner, clean_dir):
+        output = clean_dir / "report.sarif"
         result = runner.invoke(
-            main, ["scan", ".", "--format", "sarif", "--output", str(output)]
+            main, ["scan", str(clean_dir), "--format", "sarif", "--output", str(output), "--offline"]
         )
         assert result.exit_code == 0
         assert output.exists()
 
-    def test_scan_offline_flag(self, runner):
-        result = runner.invoke(main, ["scan", ".", "--offline"])
+    def test_scan_offline_flag(self, runner, clean_dir):
+        result = runner.invoke(main, ["scan", str(clean_dir), "--offline"])
         assert result.exit_code == 0
 
-    def test_scan_verbose_flag(self, runner):
-        result = runner.invoke(main, ["scan", ".", "--verbose"])
+    def test_scan_verbose_flag(self, runner, clean_dir):
+        result = runner.invoke(main, ["scan", str(clean_dir), "--verbose", "--offline"])
         assert result.exit_code == 0
 
-    def test_scan_quiet_flag(self, runner):
-        result = runner.invoke(main, ["scan", ".", "--quiet"])
+    def test_scan_quiet_flag(self, runner, clean_dir):
+        result = runner.invoke(main, ["scan", str(clean_dir), "--quiet", "--offline"])
         assert result.exit_code == 0
 
-    def test_scan_category_filter(self, runner):
-        result = runner.invoke(main, ["scan", ".", "--category", "dependency"])
+    def test_scan_category_filter(self, runner, clean_dir):
+        result = runner.invoke(main, ["scan", str(clean_dir), "--category", "dependency", "--offline"])
         assert result.exit_code == 0
 
-    def test_scan_multiple_categories(self, runner):
+    def test_scan_multiple_categories(self, runner, clean_dir):
         result = runner.invoke(
-            main, ["scan", ".", "-C", "dependency", "-C", "auth"]
+            main, ["scan", str(clean_dir), "-C", "dependency", "-C", "auth", "--offline"]
         )
         assert result.exit_code == 0
 
-    def test_scan_language_filter(self, runner):
-        result = runner.invoke(main, ["scan", ".", "--language", "python"])
+    def test_scan_language_filter(self, runner, clean_dir):
+        result = runner.invoke(main, ["scan", str(clean_dir), "--language", "python", "--offline"])
         assert result.exit_code == 0
 
-    def test_scan_fail_on_critical(self, runner):
+    def test_scan_fail_on_critical(self, runner, clean_dir):
         """Con fail-on critical y sin findings, exit code 0."""
-        result = runner.invoke(main, ["scan", ".", "--fail-on", "critical"])
+        result = runner.invoke(main, ["scan", str(clean_dir), "--fail-on", "critical", "--offline"])
         assert result.exit_code == 0
 
-    def test_scan_with_config_file(self, runner, tmp_path):
-        config = tmp_path / "custom.yaml"
+    def test_scan_with_config_file(self, runner, clean_dir):
+        config = clean_dir / "custom.yaml"
         config.write_text("fail_on: critical\nlanguages: [python]\n")
         result = runner.invoke(
-            main, ["scan", ".", "--config", str(config)]
+            main, ["scan", str(clean_dir), "--config", str(config), "--offline"]
         )
         assert result.exit_code == 0
 
-    def test_scan_with_nonexistent_config(self, runner, tmp_path):
+    def test_scan_with_nonexistent_config(self, runner, clean_dir):
         """Config file inexistente no crashea, usa defaults."""
         result = runner.invoke(
-            main, ["scan", ".", "--config", str(tmp_path / "nope.yaml")]
+            main, ["scan", str(clean_dir), "--config", str(clean_dir / "nope.yaml"), "--offline"]
         )
         assert result.exit_code == 0
 
@@ -136,36 +143,43 @@ class TestScanCommand:
 
 
 class TestDepsCommand:
-    def test_deps_default(self, runner):
-        result = runner.invoke(main, ["deps"])
+    def test_deps_default(self, runner, tmp_path):
+        (tmp_path / "requirements.txt").write_text("flask==3.0.0\n")
+        result = runner.invoke(main, ["deps", str(tmp_path), "--offline"])
         assert result.exit_code == 0
 
-    def test_deps_no_verify(self, runner):
-        result = runner.invoke(main, ["deps", "--no-verify"])
+    def test_deps_no_verify(self, runner, tmp_path):
+        (tmp_path / "requirements.txt").write_text("flask==3.0.0\n")
+        result = runner.invoke(main, ["deps", str(tmp_path), "--no-verify"])
         assert result.exit_code == 0
 
-    def test_deps_json_format(self, runner):
-        result = runner.invoke(main, ["deps", "--format", "json"])
+    def test_deps_json_format(self, runner, tmp_path):
+        (tmp_path / "requirements.txt").write_text("flask==3.0.0\n")
+        result = runner.invoke(main, ["deps", str(tmp_path), "--format", "json", "--offline"])
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert "findings" in data
 
-    def test_deps_offline(self, runner):
-        result = runner.invoke(main, ["deps", "--offline"])
+    def test_deps_offline(self, runner, tmp_path):
+        (tmp_path / "requirements.txt").write_text("flask==3.0.0\n")
+        result = runner.invoke(main, ["deps", str(tmp_path), "--offline"])
         assert result.exit_code == 0
 
 
 class TestTestsCommand:
-    def test_tests_default(self, runner):
-        result = runner.invoke(main, ["tests"])
+    def test_tests_default(self, runner, tmp_path):
+        (tmp_path / "test_app.py").write_text("def test_x(): assert True")
+        result = runner.invoke(main, ["tests", str(tmp_path)])
         assert result.exit_code == 0
 
-    def test_tests_min_assertions(self, runner):
-        result = runner.invoke(main, ["tests", "--min-assertions", "2"])
+    def test_tests_min_assertions(self, runner, tmp_path):
+        (tmp_path / "test_app.py").write_text("def test_x(): assert True")
+        result = runner.invoke(main, ["tests", str(tmp_path), "--min-assertions", "2"])
         assert result.exit_code == 0
 
-    def test_tests_json_format(self, runner):
-        result = runner.invoke(main, ["tests", "--format", "json"])
+    def test_tests_json_format(self, runner, tmp_path):
+        (tmp_path / "test_app.py").write_text("def test_x(): assert True")
+        result = runner.invoke(main, ["tests", str(tmp_path), "--format", "json"])
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert "findings" in data
@@ -237,7 +251,7 @@ class TestVersionAndHelp:
     def test_version(self, runner):
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
-        assert "0.1.0" in result.output
+        assert "0.2.0" in result.output
         assert "vigil" in result.output
 
     def test_help_shows_all_commands(self, runner):
@@ -280,5 +294,5 @@ class TestExitCodes:
     def test_no_findings_returns_success(self, runner, tmp_path):
         """Sin findings, exit code es 0 (SUCCESS)."""
         (tmp_path / "clean.py").write_text("x = 1")
-        result = runner.invoke(main, ["scan", str(tmp_path)])
+        result = runner.invoke(main, ["scan", str(tmp_path), "--offline"])
         assert result.exit_code == ExitCode.SUCCESS

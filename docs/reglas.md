@@ -12,6 +12,8 @@ vigil rules
 
 ## CAT-01: Dependency Hallucination
 
+> **Estado: IMPLEMENTADO** — El `DependencyAnalyzer` esta activo. Las reglas DEP-001, DEP-002, DEP-003, DEP-005 y DEP-007 estan implementadas. DEP-004 y DEP-006 estan diferidas para una version futura.
+
 Detecta dependencias alucinadas (slopsquatting), typosquatting y paquetes sospechosos. Este es el diferenciador principal de vigil — ningun otro scanner verifica que las dependencias realmente existen.
 
 ### DEP-001 — Hallucinated dependency
@@ -77,11 +79,12 @@ reqeusts==2.31.0     # Typo de "requests"
 
 ---
 
-### DEP-004 — Unpopular dependency
+### DEP-004 — Unpopular dependency (pendiente)
 
 | Campo | Valor |
 |-------|-------|
 | Severidad | MEDIUM |
+| Estado | **Diferida** — requiere API de estadisticas de descargas |
 
 **Que detecta:** El paquete tiene menos de 100 descargas semanales (configurable con `deps.min_weekly_downloads`).
 
@@ -101,11 +104,12 @@ reqeusts==2.31.0     # Typo de "requests"
 
 ---
 
-### DEP-006 — Missing dependency
+### DEP-006 — Missing dependency (pendiente)
 
 | Campo | Valor |
 |-------|-------|
 | Severidad | HIGH |
+| Estado | **Diferida** — requiere parser de imports AST |
 
 **Que detecta:** Un `import` en el codigo referencia un modulo que no esta declarado en las dependencias del proyecto.
 
@@ -139,6 +143,8 @@ flask==99.0.0        # Esta version no existe
 ---
 
 ## CAT-02: Auth & Permission Patterns
+
+> **Estado: PENDIENTE** — Las reglas AUTH-001 a AUTH-007 estan definidas pero el `AuthAnalyzer` aun no esta implementado (FASE 2).
 
 Detecta patrones de autenticacion y autorizacion inseguros que los agentes de IA generan con frecuencia.
 
@@ -279,6 +285,8 @@ if hmac.compare_digest(user.password_hash, computed_hash):
 
 ## CAT-03: Secrets & Credentials
 
+> **Estado: PENDIENTE** — Las reglas SEC-001 a SEC-006 estan definidas pero el `SecretsAnalyzer` aun no esta implementado (FASE 2).
+
 Detecta secrets y credenciales que los agentes de IA copian de ejemplos o generan de forma insegura.
 
 ### SEC-001 — Placeholder secret in code
@@ -371,6 +379,8 @@ SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret-not-for-production")
 ---
 
 ## CAT-06: Test Quality
+
+> **Estado: PENDIENTE** — Las reglas TEST-001 a TEST-006 estan definidas pero el `TestQualityAnalyzer` aun no esta implementado (FASE 3).
 
 Detecta tests que dan cobertura falsa — pasan pero no verifican nada real. Esto se conoce como "test theater".
 

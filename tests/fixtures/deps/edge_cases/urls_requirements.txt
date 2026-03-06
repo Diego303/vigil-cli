@@ -1,0 +1,6 @@
+# URL-based dependencies
+-e git+https://github.com/org/private-lib.git@v1.0#egg=private-lib
+git+https://github.com/org/lib.git
+flask==3.0.0
+--index-url https://pypi.org/simple/
+-r requirements-base.txt

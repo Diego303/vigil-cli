@@ -3,6 +3,7 @@
 import json
 from dataclasses import asdict
 
+from vigil import __version__
 from vigil.core.engine import ScanResult
 from vigil.core.finding import Finding
 
@@ -12,7 +13,7 @@ class JsonFormatter:
 
     def format(self, result: ScanResult) -> str:
         output = {
-            "version": "0.1.0",
+            "version": __version__,
             "files_scanned": result.files_scanned,
             "duration_seconds": round(result.duration_seconds, 3),
             "analyzers_run": result.analyzers_run,

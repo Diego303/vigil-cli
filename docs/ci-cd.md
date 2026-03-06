@@ -375,9 +375,10 @@ vigil scan src/ --offline
 
 En modo offline, vigil:
 - No hace HTTP requests a PyPI ni npm.
-- Ejecuta todos los checks estaticos (patterns, imports, secrets, tests).
-- No puede verificar si un paquete existe (DEP-001 se omite).
-- No puede verificar la edad del paquete (DEP-002 se omite).
+- Ejecuta todos los checks estaticos que no requieren red.
+- **Si ejecuta:** DEP-003 (typosquatting por similaridad de nombres — no requiere red).
+- **No ejecuta:** DEP-001 (paquete inexistente), DEP-002 (paquete nuevo), DEP-005 (sin repo fuente), DEP-007 (version inexistente).
+- Los analyzers futuros (auth, secrets, tests) seran completamente estaticos y funcionaran en modo offline.
 
 Esto es util en:
 - Runners de CI sin acceso a internet.
