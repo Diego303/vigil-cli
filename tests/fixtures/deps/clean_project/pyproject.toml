@@ -1,0 +1,14 @@
+[project]
+name = "clean-project"
+version = "1.0.0"
+dependencies = [
+    "flask>=3.0",
+    "requests>=2.31",
+    "click>=8.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4",
+]

@@ -149,5 +149,8 @@ class ScanEngine:
             # Filtrar reglas excluidas
             if finding.rule_id in self.config.exclude_rules:
                 continue
+            # Filtrar por rules_filter (--rule flag): solo incluir si esta en la lista
+            if self.config.rules_filter and finding.rule_id not in self.config.rules_filter:
+                continue
             filtered.append(finding)
         result.findings = filtered

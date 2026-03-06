@@ -1,0 +1,6 @@
+# Mix of legitimate and suspicious dependencies
+flask==3.0.0
+python-jwt-utils==1.0.0
+reqeusts==2.31.0
+fast-json-parser==0.5.0
+PyJWT==2.8.0

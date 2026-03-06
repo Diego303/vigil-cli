@@ -1,5 +1,6 @@
 """Descubre archivos a escanear segun configuracion."""
 
+import os
 from pathlib import Path
 
 import structlog
@@ -63,11 +64,16 @@ def collect_files(
             logger.warning("path_not_found", path=path_str)
             continue
 
-        for file_path in root.rglob("*"):
-            if not file_path.is_file():
-                continue
-            if _should_include_file(file_path, allowed_extensions, exclude):
-                collected.append(str(file_path))
+        # Usar os.walk con pruning para evitar recorrer directorios excluidos
+        exclude_normalized = {p.rstrip("/") for p in exclude}
+        for dirpath, dirnames, filenames in os.walk(root):
+            # Prune: no recorrer subdirectorios excluidos (in-place)
+            dirnames[:] = [d for d in dirnames if d not in exclude_normalized]
+
+            for fname in filenames:
+                file_path = Path(dirpath) / fname
+                if _should_include_file(file_path, allowed_extensions, exclude):
+                    collected.append(str(file_path))
 
     # Deduplica preservando orden
     seen: set[str] = set()
@@ -89,11 +95,11 @@ def _should_include_file(
     """Determina si un archivo debe incluirse en el scan."""
     path_str = str(file_path)
 
-    # Excluir por patrones
+    # Excluir por patrones (match por componente de path, no substring)
+    parts = file_path.parts
     for pattern in exclude:
-        # Normalizar: "node_modules/" -> "node_modules"
         normalized = pattern.rstrip("/")
-        if normalized in path_str:
+        if normalized in parts:
             return False
 
     # Siempre incluir archivos de dependencias

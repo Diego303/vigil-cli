@@ -122,7 +122,7 @@ def scan(
 
     # Ejecutar scan
     engine = ScanEngine(scan_config)
-    # Los analyzers se registraran en fases posteriores
+    _register_analyzers(engine)
     result = engine.run(scan_paths)
 
     # Formatear y escribir output
@@ -130,7 +130,9 @@ def scan(
     report = formatter.format(result)
 
     if output:
-        Path(output).write_text(report, encoding="utf-8")
+        output_path = Path(output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(report, encoding="utf-8")
         if output_format == "human":
             click.echo(report)
     else:
@@ -187,7 +189,7 @@ def deps(
     )
 
     engine = ScanEngine(scan_config)
-    # DependencyAnalyzer se registrara en FASE 1
+    _register_analyzers(engine)
     result = engine.run([path])
 
     formatter = get_formatter(output_format)
@@ -236,7 +238,7 @@ def check_tests(
     scan_config.tests.min_assertions_per_test = min_assertions
 
     engine = ScanEngine(scan_config)
-    # TestQualityAnalyzer se registrara en FASE 3
+    _register_analyzers(engine)
     result = engine.run(list(test_paths))
 
     formatter = get_formatter(output_format)
@@ -311,6 +313,17 @@ def rules() -> None:
             refs.append(rule.cwe_ref)
         if refs:
             click.echo(f"  {'':10} {'':8}  [{', '.join(refs)}]")
+
+
+def _register_analyzers(engine: ScanEngine) -> None:
+    """Registra todos los analyzers disponibles en el engine."""
+    from vigil.analyzers.deps import DependencyAnalyzer
+
+    engine.register_analyzer(DependencyAnalyzer())
+    # Otros analyzers se registraran en fases posteriores:
+    # engine.register_analyzer(AuthAnalyzer())
+    # engine.register_analyzer(SecretsAnalyzer())
+    # engine.register_analyzer(TestQualityAnalyzer())
 
 
 def _get_changed_files() -> list[str]:

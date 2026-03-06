@@ -22,7 +22,7 @@ class TestCLI:
     def test_version(self):
         result = self.runner.invoke(main, ["--version"])
         assert result.exit_code == 0
-        assert "0.1.0" in result.output
+        assert "0.2.0" in result.output
 
     def test_scan_help(self):
         result = self.runner.invoke(main, ["scan", "--help"])
@@ -31,40 +31,47 @@ class TestCLI:
         assert "--fail-on" in result.output
         assert "--offline" in result.output
 
-    def test_scan_current_dir(self):
-        result = self.runner.invoke(main, ["scan", "."])
+    def test_scan_current_dir(self, tmp_path):
+        (tmp_path / "app.py").write_text("x = 1")
+        result = self.runner.invoke(main, ["scan", str(tmp_path), "--offline"])
         assert result.exit_code == 0
         assert "findings" in result.output
 
-    def test_scan_nonexistent_dir(self):
-        result = self.runner.invoke(main, ["scan", "/nonexistent/path"])
+    def test_scan_nonexistent_dir(self, tmp_path):
+        """Scanning a nonexistent path within a clean dir produces no findings."""
+        nonexistent = tmp_path / "nonexistent"
+        result = self.runner.invoke(main, ["scan", str(nonexistent), "--offline"])
         assert result.exit_code == 0  # No findings = success
         assert "0 files" in result.output or "scanned" in result.output
 
-    def test_scan_json_format(self):
-        result = self.runner.invoke(main, ["scan", ".", "--format", "json"])
+    def test_scan_json_format(self, tmp_path):
+        (tmp_path / "app.py").write_text("x = 1")
+        result = self.runner.invoke(main, ["scan", str(tmp_path), "--format", "json", "--offline"])
         assert result.exit_code == 0
         import json
         data = json.loads(result.output)
         assert "findings" in data
 
-    def test_scan_sarif_format(self):
-        result = self.runner.invoke(main, ["scan", ".", "--format", "sarif"])
+    def test_scan_sarif_format(self, tmp_path):
+        (tmp_path / "app.py").write_text("x = 1")
+        result = self.runner.invoke(main, ["scan", str(tmp_path), "--format", "sarif", "--offline"])
         assert result.exit_code == 0
         import json
         data = json.loads(result.output)
         assert data["version"] == "2.1.0"
 
-    def test_scan_junit_format(self):
-        result = self.runner.invoke(main, ["scan", ".", "--format", "junit"])
+    def test_scan_junit_format(self, tmp_path):
+        (tmp_path / "app.py").write_text("x = 1")
+        result = self.runner.invoke(main, ["scan", str(tmp_path), "--format", "junit", "--offline"])
         assert result.exit_code == 0
         assert "<?xml" in result.output
 
     def test_scan_with_output_file(self, tmp_path):
-        output_file = tmp_path / "report.json"
+        (tmp_path / "app.py").write_text("x = 1")
+        output_file = tmp_path / "reports" / "report.json"
         result = self.runner.invoke(
             main,
-            ["scan", ".", "--format", "json", "--output", str(output_file)],
+            ["scan", str(tmp_path), "--format", "json", "--output", str(output_file), "--offline"],
         )
         assert result.exit_code == 0
         assert output_file.exists()
@@ -77,8 +84,9 @@ class TestCLI:
         assert result.exit_code == 0
         assert "--verify" in result.output
 
-    def test_deps_command(self):
-        result = self.runner.invoke(main, ["deps", "."])
+    def test_deps_command(self, tmp_path):
+        (tmp_path / "requirements.txt").write_text("flask==3.0.0\n")
+        result = self.runner.invoke(main, ["deps", str(tmp_path), "--offline"])
         assert result.exit_code == 0
 
     def test_tests_help(self):
@@ -130,6 +138,6 @@ class TestCLI:
         (tmp_path / "test.py").write_text("x = 1")
         result = self.runner.invoke(
             main,
-            ["scan", str(tmp_path), "--config", str(config_file)],
+            ["scan", str(tmp_path), "--config", str(config_file), "--offline"],
         )
         assert result.exit_code == 0

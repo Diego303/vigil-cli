@@ -149,6 +149,12 @@ def _merge_cli_overrides(file_data: dict, cli_overrides: dict) -> dict:
     return data
 
 
+def _yaml_list(items: list[str]) -> str:
+    """Formatea una lista Python como YAML flow sequence."""
+    quoted = ", ".join(f'"{item}"' for item in items)
+    return f"[{quoted}]"
+
+
 def generate_config_yaml(strategy: str = "standard") -> str:
     """Genera contenido YAML para .vigil.yaml con el preset seleccionado."""
     preset = STRATEGY_PRESETS.get(strategy, {})
@@ -161,15 +167,15 @@ def generate_config_yaml(strategy: str = "standard") -> str:
         "# Documentation: https://github.com/org/vigil",
         "",
         "# Paths to scan",
-        f"include: {config.include}",
-        f"exclude: {config.exclude}",
-        f'test_dirs: {config.test_dirs}',
+        f"include: {_yaml_list(config.include)}",
+        f"exclude: {_yaml_list(config.exclude)}",
+        f"test_dirs: {_yaml_list(config.test_dirs)}",
         "",
         "# Minimum severity to fail (exit code 1)",
         f'fail_on: "{config.fail_on}"',
         "",
         "# Languages to scan",
-        f"languages: {config.languages}",
+        f"languages: {_yaml_list(config.languages)}",
         "",
         "# Dependency analysis",
         "deps:",

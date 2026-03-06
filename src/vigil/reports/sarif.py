@@ -53,7 +53,7 @@ class SarifFormatter:
     def _rule_to_sarif(self, rule) -> dict:
         entry: dict = {
             "id": rule.id,
-            "name": rule.name.replace(" ", ""),
+            "name": "".join(w.capitalize() for w in rule.name.split()),
             "shortDescription": {"text": rule.description},
         }
         if rule.cwe_ref:

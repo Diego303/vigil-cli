@@ -49,6 +49,8 @@ src/vigil/
   config/             # Configuracion (schema, loader, rules)
   core/               # Modelos y motor (finding, engine, file_collector)
   analyzers/          # Analyzers (logica de deteccion)
+    base.py           #   BaseAnalyzer Protocol
+    deps/             #   DependencyAnalyzer (parsers, registry, similarity)
   reports/            # Formateadores de salida
   logging/            # Setup de structlog
 tests/
@@ -56,7 +58,10 @@ tests/
   test_core/          # Tests del core
   test_config/        # Tests de configuracion
   test_reports/       # Tests de formateadores
+  test_analyzers/     # Tests de analyzers
+    test_deps/        #   Tests del DependencyAnalyzer
   fixtures/           # Archivos de prueba
+    deps/             #   Fixtures de dependencias
 docs/                 # Documentacion
 ```
 
@@ -118,14 +123,22 @@ from vigil.core.finding import Finding, Severity
 
 Los analyzers son la logica de deteccion de vigil. Cada analyzer implementa el protocolo `BaseAnalyzer`.
 
-### Paso 1: Crear el archivo
+### Paso 1: Crear el modulo
+
+Para analyzers con multiples componentes, crear un subpackage:
 
 ```bash
 # Ejemplo: analyzer de secrets
-touch src/vigil/analyzers/secrets.py
+mkdir -p src/vigil/analyzers/secrets
+touch src/vigil/analyzers/secrets/__init__.py
+touch src/vigil/analyzers/secrets/analyzer.py
 ```
 
+Para analyzers simples, un archivo individual es suficiente.
+
 ### Paso 2: Implementar el protocolo
+
+Referencia: ver `src/vigil/analyzers/deps/analyzer.py` para un ejemplo completo.
 
 ```python
 """Analyzer de secrets y credenciales."""
@@ -174,20 +187,21 @@ class SecretsAnalyzer:
 
 ### Paso 3: Registrar en el engine
 
-En `cli.py`, el analyzer se registra antes de ejecutar el scan:
+En `cli.py`, agregar el analyzer a `_register_analyzers()`:
 
 ```python
-from vigil.analyzers.secrets import SecretsAnalyzer
+def _register_analyzers(engine: ScanEngine) -> None:
+    from vigil.analyzers.deps import DependencyAnalyzer
+    from vigil.analyzers.secrets import SecretsAnalyzer  # nuevo
 
-engine = ScanEngine(config)
-engine.register_analyzer(SecretsAnalyzer())
-result = engine.run(paths)
+    engine.register_analyzer(DependencyAnalyzer())
+    engine.register_analyzer(SecretsAnalyzer())           # nuevo
 ```
 
 ### Paso 4: Escribir tests
 
 ```python
-# tests/test_analyzers/test_secrets.py
+# tests/test_analyzers/test_secrets/test_analyzer.py
 from vigil.analyzers.secrets import SecretsAnalyzer
 from vigil.config.schema import ScanConfig
 
@@ -293,15 +307,22 @@ pytest -v
 
 | Modulo | Tests |
 |--------|-------|
-| CLI | 19 |
-| Core (finding) | 12 |
-| Core (engine) | 12 |
-| Core (file_collector) | 11 |
-| Config (schema) | 13 |
-| Config (loader) | 15 |
-| Config (rules) | 14 |
-| Reports (formatters) | 19 |
-| **Total** | **125** |
+| CLI | 53 |
+| Core (finding) | 28 |
+| Core (engine) | 29 |
+| Core (file_collector) | 36 |
+| Config (schema) | 25 |
+| Config (loader) | 39 |
+| Config (rules) | 34 |
+| Reports (formatters) | 47 |
+| Analyzers (deps) | 120 |
+| Analyzers (deps) QA | 126 |
+| Integration | 14 |
+| Integration QA (deps) | 13 |
+| Logging | 3 |
+| **Total** | **~632** |
+
+Cobertura global: **~94%**
 
 ---
 
@@ -344,12 +365,13 @@ vigil se desarrolla en fases incrementales:
 
 | Fase | Descripcion | Estado |
 |------|-------------|--------|
-| **FASE 0** | Scaffolding, config, engine, CLI, formatters, rule catalog | Completada |
-| **FASE 1** | Dependency analyzer (DEP-001 a DEP-007) | Pendiente |
-| **FASE 2** | Auth analyzer (AUTH-001 a AUTH-007) | Pendiente |
-| **FASE 3** | Secrets analyzer (SEC-001 a SEC-006) | Pendiente |
-| **FASE 4** | Test quality analyzer (TEST-001 a TEST-006) | Pendiente |
-| **FASE 5** | Integracion, polish, release | Pendiente |
+| **FASE 0** | Scaffolding, config, engine, CLI, formatters, rule catalog | Completada (QA done) |
+| **FASE 1** | Dependency analyzer (DEP-001, 002, 003, 005, 007) | Completada (QA done) |
+| **FASE 2** | Auth + Secrets analyzers (AUTH-001..007, SEC-001..006) | Pendiente |
+| **FASE 3** | Test quality analyzer (TEST-001..006) | Pendiente |
+| **FASE 4** | Reports polish | Pendiente |
+| **FASE 5** | Integracion, fixtures realistas, docs | Pendiente |
+| **FASE 6** | Popular packages corpus, polish final | Pendiente |
 
 Consultar `SEGUIMIENTO-V0.md` para el estado detallado de cada fase.
 

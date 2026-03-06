@@ -166,10 +166,12 @@ vigil es **determinista**. No usa LLMs, modelos de machine learning, ni heuristi
 
 vigil hace HTTP requests a registries publicos (PyPI, npm) para verificar la existencia de paquetes. Estas requests:
 
-- Solo son GET requests de lectura.
+- Solo son GET requests de lectura a las APIs publicas de PyPI (`pypi.org/pypi/{name}/json`) y npm (`registry.npmjs.org/{name}`).
 - No envian datos del proyecto (excepto nombres de paquetes).
 - Se pueden desactivar completamente con `--offline`.
-- Se cachean localmente en `~/.cache/vigil/registry/`.
+- Se cachean localmente en `~/.cache/vigil/registry/` con TTL configurable (default 24h).
+- Los errores de red **asumen que el paquete existe** para evitar falsos positivos en conexiones inestables.
+- El cliente HTTP usa `httpx` con timeout de 10 segundos y reutiliza conexiones.
 
 ### Cache
 

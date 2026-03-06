@@ -9,8 +9,8 @@
 
 | Fase | Nombre | Estado | Tests |
 |------|--------|--------|-------|
-| FASE 0 | Scaffolding + Config + Core | COMPLETADA | 125 |
-| FASE 1 | Dependency Analyzer | Pendiente | — |
+| FASE 0 | Scaffolding + Config + Core | COMPLETADA (QA done) | 350 |
+| FASE 1 | Dependency Analyzer | COMPLETADA (QA done) | 282 |
 | FASE 2 | Auth & Secrets Analyzers | Pendiente | — |
 | FASE 3 | Test Quality Analyzer | Pendiente | — |
 | FASE 4 | Reports + Formatters | Pendiente | — |
@@ -18,11 +18,10 @@
 | FASE 6 | Data + Polish | Pendiente | — |
 
 **Metricas actuales:**
-- Lineas de codigo fuente: ~1,743 (src/vigil/)
-- Lineas de tests: ~1,182 (tests/)
-- Tests totales: 125 (todos pasando)
-- Archivos fuente: 23
-- Archivos de test: 10
+- Tests totales: 632 (todos pasando, 0 warnings)
+- Cobertura: ~94%
+- Archivos fuente: 27
+- Archivos de test: 28
 
 ---
 
@@ -136,7 +135,7 @@ Implementados exactamente segun el plan:
 - `DepsConfig` — verify_registry, min_age_days, min_weekly_downloads, similarity_threshold, cache_ttl_hours, offline_mode
 - `AuthConfig` — max_token_lifetime_hours, require_auth_on_mutating, cors_allow_localhost
 - `SecretsConfig` — min_entropy, check_env_example, placeholder_patterns (12 patterns por defecto)
-- `TestsConfig` — min_assertions_per_test, detect_trivial_asserts, detect_mock_mirrors
+- `TestQualityConfig` — min_assertions_per_test, detect_trivial_asserts, detect_mock_mirrors
 - `OutputConfig` — format, output_file, colors, verbose, show_suggestions
 - `RuleOverride` — enabled (bool|None), severity (str|None)
 - Campos de runtime agregados a `ScanConfig`: categories, rules_filter, exclude_rules
@@ -290,17 +289,255 @@ No requiere tests propios — se valida indirectamente via tests del ScanEngine 
 - `.vigil.example.yaml` — configuracion de ejemplo documentada
 - `.gitignore` — exclusiones para Python, venvs, IDEs, cache, testing
 
+### F0.QA — Auditoria de calidad y tests adicionales
+
+**Estado: COMPLETADA**
+
+Se realizo una auditoria exhaustiva del codigo de FASE 0 con el rol de ingeniero senior de QA. Se encontraron 15 hallazgos (6 bugs, 4 robustez, 2 consistencia, 3 menores) y se corrigieron los 6 bugs.
+
+**Bugs corregidos:**
+
+1. **`file_collector.py:96`** — Exclude usaba substring match (`"build" in path_str`), lo que causaba que `"build/"` excluyera tambien `"rebuild/"`. Corregido a path-component matching via `file_path.parts`.
+2. **`schema.py:56`** — `TestsConfig` causaba `PytestCollectionWarning` porque pytest intentaba recolectarla como clase de test. Renombrada a `TestQualityConfig` + `__test__ = False`.
+3. **`schema.py:94`** — `fail_on` era `str` sin validacion, aceptaba cualquier valor como `"banana"` que luego causaba `ValueError` en el CLI. Cambiado a `Literal["critical","high","medium","low","info"]`.
+4. **`loader.py:164`** — `generate_config_yaml` producia listas en sintaxis Python (`['src/', 'lib/']`) que no es YAML valido. Creado helper `_yaml_list()` que genera `["src/", "lib/"]` (flow sequence YAML valido). Ahora el roundtrip `vigil init` -> `load_config` funciona.
+5. **`sarif.py:56`** — `rule.name.replace(" ", "")` generaba `"Hallucinateddependency"` en vez de PascalCase. Corregido a `"".join(w.capitalize() for w in name.split())` -> `"HallucinatedDependency"`.
+6. **`cli.py:133`** — `--output reports/scan.json` fallaba con `FileNotFoundError` si el directorio padre no existia. Agregado `parent.mkdir(parents=True, exist_ok=True)` antes de escribir.
+
+**Issues documentados (no corregidos, para fases futuras):**
+
+- `engine.py`: campo `include` en `ScanConfig` existe pero nunca se pasa a `collect_files` — no tiene efecto
+- `cli.py`: `_get_changed_files` no maneja filenames con espacios en git status `--porcelain`
+- `rules.py`: `DEP-007` y `SEC-006` son CRITICAL sin `cwe_ref` asignado
+
+**Tests nuevos: 225 tests en 9 archivos:**
+
+| Archivo | Tests | Cobertura |
+|---------|-------|-----------|
+| `test_core/test_finding_edge_cases.py` | 16 | Severity/Category como string, metadata aislamiento, `is_blocking` parametrizado |
+| `test_core/test_engine_edge_cases.py` | 17 | Multi-analyzer, error recovery, overrides combinados, sort estable |
+| `test_core/test_file_collector_edge_cases.py` | 25 | Exclude por componente, extensiones JS, dep files, symlinks, binarios |
+| `test_config/test_schema_edge_cases.py` | 12 | Validacion `fail_on`, aislamiento de defaults, override parcial nested |
+| `test_config/test_loader_edge_cases.py` | 24 | YAML edge cases, merge logic, roundtrip, presets |
+| `test_config/test_rules_edge_cases.py` | 20 | Integridad catalogo, IDs secuenciales, severidades vs plan, CWE refs |
+| `test_reports/test_formatters_edge_cases.py` | 28 | Todos los formatters: chars especiales, unicode, SARIF severity mapping |
+| `test_cli_edge_cases.py` | 34 | Todos los commands/flags, formatos, exit codes, output nested dirs |
+| `test_integration.py` | 14 | Pipeline completo scan, todos los formatters con datos realistas |
+| `test_logging.py` | 3 | Niveles de log, idempotencia |
+
+**1 test existente actualizado:** `test_config/test_schema.py` — `TestsConfig` -> `TestQualityConfig`
+
+**Cobertura por modulo:**
+
+| Modulo | Cobertura |
+|--------|-----------|
+| `core/finding.py` | 100% |
+| `core/engine.py` | 99% |
+| `core/file_collector.py` | 100% |
+| `config/schema.py` | 100% |
+| `config/rules.py` | 100% |
+| `config/loader.py` | 95% |
+| `reports/*` | 95-100% |
+| `cli.py` | 81% |
+| `logging/setup.py` | 100% |
+
 ---
 
 ## FASE 1 — Dependency Analyzer
 
-**Estado: Pendiente**
+**Objetivo:** Implementar el analyzer de dependencias que detecta paquetes alucinados, typosquatting, paquetes nuevos sospechosos, versiones inexistentes y paquetes sin repositorio fuente.
 
-Pendiente de implementar:
-- F1.1 — Parsers de dependencias (requirements.txt, pyproject.toml, package.json)
-- F1.2 — Registry Client (PyPI + npm + cache local)
-- F1.3 — Similarity checker (Levenshtein + corpus de paquetes populares)
-- F1.4 — DependencyAnalyzer completo (DEP-001 a DEP-007)
+**Estado: COMPLETADA**
+
+### F1.1 — Parsers de dependencias
+
+**Archivo:** `src/vigil/analyzers/deps/parsers.py`
+
+- `DeclaredDependency` dataclass — name, version_spec, source_file, line_number, ecosystem, is_dev
+- `parse_requirements_txt()` — parsea requirements.txt/requirements-dev.txt con soporte para extras, version specs, comentarios, flags (`-r`, `-i`)
+- `parse_pyproject_toml()` — parsea `[project.dependencies]` y `[project.optional-dependencies]` usando `tomllib` (stdlib 3.11+) con fallback a `tomli`
+- `parse_package_json()` — parsea `dependencies` y `devDependencies`
+- `find_and_parse_all()` — descubre y parsea todos los archivos de dependencias con `os.walk` + pruning de directorios (.venv, node_modules, .git, etc.)
+- Helpers: `_build_toml_line_map()`, `_find_json_key_line()` para rastreo de numeros de linea
+
+**Decision:** Se usa `os.walk()` con pruning in-place (`dirnames[:] = [...]`) en vez de `rglob()` para evitar recorrer `.venv/` y `node_modules/`, lo cual causaba timeouts de >2 minutos en WSL.
+
+**Tests:** 40 tests en `test_analyzers/test_deps/test_parsers.py`
+- requirements.txt: paquetes con version, sin version, con extras, comentarios, lineas vacias, flags -r/-i, encoding errors
+- pyproject.toml: dependencies, optional-dependencies (dev/non-dev), extras, TOML invalido, sin seccion project
+- package.json: dependencies, devDependencies, version types, JSON invalido
+- find_and_parse_all: multiples archivos, pruning de directorios, directorio inexistente
+
+### F1.2 — Registry Client
+
+**Archivo:** `src/vigil/analyzers/deps/registry_client.py`
+
+- `PackageInfo` dataclass — name, version, exists, description, home_page, source_repo, created_at (ISO string), latest_version
+  - Propiedades: `created_datetime`, `age_days`
+- `RegistryClient` clase — cliente HTTP para PyPI y npm con cache en disco
+  - Cache en `~/.cache/vigil/registry/` con TTL configurable (default 24h)
+  - Inicializacion lazy del cliente httpx (solo se crea al primer request)
+  - Context manager support (`async with` / close)
+  - `check_package(name, ecosystem)` — verifica existencia en PyPI o npm
+  - `check_version(name, version, ecosystem)` — verifica existencia de version especifica
+  - Errores de red asumen que el paquete existe (evita falsos positivos)
+  - Cache key: `{ecosystem}/{normalized_name}.json`
+
+**Decision:** `created_at` se almacena como string ISO en vez de datetime para serializacion JSON directa al cache. La propiedad `created_datetime` parsea bajo demanda.
+
+**Tests:** 21 tests en `test_analyzers/test_deps/test_registry_client.py`
+- PackageInfo: propiedades, age_days, created_datetime, paquete inexistente
+- RegistryClient: check_package PyPI/npm (con mock httpx), cache hit/miss, TTL expirado
+- check_version: version existente/inexistente, paquete inexistente
+- Errores de red: timeout, connection error (asumen paquete existe)
+- Modo offline: skip HTTP, close() limpieza
+
+### F1.3 — Similarity checker
+
+**Archivo:** `src/vigil/analyzers/deps/similarity.py`
+
+- `levenshtein_distance(s1, s2)` — implementacion O(min(m,n)) en espacio
+- `normalized_similarity(s1, s2)` — similitud 0.0-1.0 basada en distancia Levenshtein
+- `_normalize_package_name(name, ecosystem)` — normalizacion PyPI (PEP 503: hyphens/underscores/dots equivalentes, lowercase)
+- `load_popular_packages(ecosystem, data_dir)` — carga corpus desde archivos en `data/`, fallback a corpus builtin
+- `find_similar_popular(name, ecosystem, threshold, popular)` — encuentra paquetes populares similares por encima del threshold
+- Corpus builtin: ~100 paquetes PyPI + ~70 paquetes npm como fallback hasta que FASE 6 genere archivos completos
+
+**Decision:** El threshold por defecto es 0.85 (configurable via `deps.similarity_threshold`). Esto captura typos de un caracter como "requets" (0.875) pero no transposiciones dobles como "reqeusts" (0.75), lo cual es intencionalmente conservador para evitar falsos positivos.
+
+**Tests:** 34 tests en `test_analyzers/test_deps/test_similarity.py`
+- Levenshtein: strings iguales, vacios, un vacio, un caracter diferente, longitudes distintas
+- Similitud normalizada: identicos=1.0, completamente distintos=0.0, similar alto/bajo
+- Normalizacion: PyPI (hyphens, underscores, dots, mixed case), npm (sin cambio)
+- Corpus: load_popular_packages (builtin fallback, data files), formato correcto
+- find_similar_popular: match, no match, threshold variable, normalizacion
+
+### F1.4 — DependencyAnalyzer
+
+**Archivo:** `src/vigil/analyzers/deps/analyzer.py`
+
+- `DependencyAnalyzer` — implementa `BaseAnalyzer` Protocol
+  - `name = "dependency"`, `category = Category.DEPENDENCY`
+  - `analyze(files, config)` — flujo completo de analisis de dependencias
+- Reglas implementadas:
+  - **DEP-001** (CRITICAL) — Paquete no existe en registro (alucinado)
+  - **DEP-002** (HIGH) — Paquete creado hace menos de N dias (configurable, default 30)
+  - **DEP-003** (HIGH) — Nombre similar a paquete popular (typosquatting)
+  - **DEP-005** (MEDIUM) — Paquete sin repositorio fuente vinculado
+  - **DEP-007** (CRITICAL) — Version especificada no existe en registro
+- Helpers: `_extract_roots()` (infiere directorios raiz de la lista de archivos), `_deduplicate_deps()` (por nombre+ecosistema), `_extract_pinned_version()` (extrae version exacta de specs como `==1.0.0`)
+- Pre-carga corpus de paquetes populares una sola vez para todas las verificaciones de similitud
+
+**Reglas diferidas:**
+- **DEP-004** (unpopular) — requiere API de estadisticas de descargas (no disponible en metadata basica de PyPI/npm)
+- **DEP-006** (missing import) — requiere parser de imports AST, fuera de scope V0 (regex-based)
+
+**Decision:** Se deduplicaron dependencias por nombre+ecosistema antes de verificar, para evitar queries duplicados al registro cuando el mismo paquete aparece en multiples archivos (ej: requirements.txt y pyproject.toml).
+
+**Tests:** 25 tests en `test_analyzers/test_deps/test_analyzer.py`
+- Propiedades: name, category
+- DEP-001: paquete inexistente genera finding CRITICAL
+- DEP-002: paquete nuevo genera finding HIGH
+- DEP-003: typosquatting genera finding HIGH
+- DEP-005: sin source repo genera finding MEDIUM
+- DEP-007: version inexistente genera finding CRITICAL
+- Paquete limpio: no genera findings
+- Modo offline: sin HTTP, solo checks estaticos
+- Deduplicacion: mismo paquete en multiples archivos
+- Helpers: _extract_roots, _deduplicate_deps, _extract_pinned_version
+
+### F1.5 — Wiring al CLI y performance
+
+**Archivos modificados:** `src/vigil/cli.py`, `src/vigil/core/file_collector.py`
+
+**CLI:**
+- Nueva funcion `_register_analyzers(engine)` que registra `DependencyAnalyzer` en el engine
+- Reemplazados 3 placeholders (`# TODO: register analyzers`) en comandos `scan`, `deps`, `check_tests` con llamada a `_register_analyzers(engine)`
+
+**File collector:**
+- Reemplazado `Path.rglob("*")` con `os.walk()` + pruning in-place de directorios excluidos
+- Critico para performance en WSL: scan paso de >2 minutos a ~0.3 segundos
+
+**Tests CLI actualizados:**
+- Agregado `--offline` a todos los tests que escanean `.` (directorio real del repo) para evitar llamadas HTTP a PyPI/npm
+- Archivos afectados: `test_cli.py` (~8 tests), `test_cli_edge_cases.py` (~20 tests)
+
+### F1.Fixtures — Test fixtures
+
+**Archivos creados en `tests/fixtures/deps/`:**
+
+- `valid_project/requirements.txt` — requests, flask con versiones pinneadas
+- `valid_project/pyproject.toml` — click, pydantic en [project.dependencies]
+- `hallucinated_deps/requirements.txt` — paquete inventado "flask-nonexistent-xyz"
+- `hallucinated_deps/pyproject.toml` — paquete inventado "nonexistent-ai-helper"
+- `npm_project/package.json` — express + dependencia inventada "react-nonexistent-xyz"
+
+### Resumen de tests FASE 1
+
+| Archivo | Tests | Cobertura |
+|---------|-------|-----------|
+| `test_analyzers/test_deps/test_parsers.py` | 40 | ~95% parsers.py |
+| `test_analyzers/test_deps/test_registry_client.py` | 21 | ~92% registry_client.py |
+| `test_analyzers/test_deps/test_similarity.py` | 34 | ~95% similarity.py |
+| `test_analyzers/test_deps/test_analyzer.py` | 25 | ~90% analyzer.py |
+| **Total FASE 1** | **120** | **~92%** |
+
+### F1.QA — Auditoria de calidad y tests adicionales
+
+**Estado: COMPLETADA**
+
+Se realizo una auditoria exhaustiva del codigo de FASE 1 con el rol de ingeniero senior de QA. Se encontraron 11 hallazgos (4 bugs, 4 robustez, 3 consistencia/seguridad) y se corrigieron los 4 bugs.
+
+**Bugs corregidos:**
+
+1. **`similarity.py:287`** — Corpus builtin de npm tenia entrada duplicada para `"chalk"` (linea 287 con 300K sobreescribia linea 242 con 22M descargas). Eliminada la entrada duplicada.
+2. **`engine.py:_apply_rule_overrides`** — El flag `--rule` (`rules_filter` en ScanConfig) nunca filtraba findings realmente. Agregado filtrado explicito: si `rules_filter` esta activo, solo se incluyen findings cuyo `rule_id` esta en la lista.
+3. **`parsers.py:parse_requirements_txt`** — Dependencias con environment markers (ej: `pywin32; sys_platform == "win32"`) eran silenciosamente ignoradas porque el `;` confundia el regex. Agregado strip de markers antes del parsing.
+4. **`analyzer.py:_extract_roots`** — Retornaba `["."]` para input vacio, causando que el analyzer escaneara el directorio de trabajo actual inesperadamente. Cambiado a retornar `[]` con early return en `analyze()`.
+
+**Issues documentados (no corregidos, para fases futuras):**
+
+- `registry_client.py`: No valida que `created_at` sea un ISO string valido antes de parsear
+- `similarity.py`: Corpus builtin es conservador (~170 paquetes), se ampliara en FASE 6
+- `analyzer.py`: DEP-004 (descargas) y DEP-006 (imports sin declarar) diferidos a fases futuras
+
+**Tests nuevos: 162 tests en 5 archivos + updates a 2 existentes:**
+
+| Archivo | Tests | Cobertura |
+|---------|-------|-----------|
+| `test_analyzers/test_deps/test_parsers_qa.py` | 28 | Environment markers, BOM, CRLF, Unicode, URLs, fixtures |
+| `test_analyzers/test_deps/test_registry_client_qa.py` | 26 | PackageInfo edge cases, cache, sanitize key, response parsing |
+| `test_analyzers/test_deps/test_similarity_qa.py` | 27 | Corpus integrity, Levenshtein edges, PEP 503, false positives |
+| `test_analyzers/test_deps/test_analyzer_qa.py` | 32 | False positives/negatives, boundary conditions, metadata |
+| `test_analyzers/test_deps/test_integration_qa.py` | 13 | Engine+Analyzer, CLI+deps, regression tests |
+| `test_cli.py` (actualizado) | — | Refactored to use tmp_path (avoid fixture interference) |
+| `test_cli_edge_cases.py` (actualizado) | — | Refactored to use clean_dir fixture |
+
+**Fixtures nuevas en `tests/fixtures/deps/`:**
+
+- `clean_project/` — requirements.txt, pyproject.toml, package.json con dependencias legitimas
+- `vulnerable_project/` — mix de dependencias legitimas y sospechosas (typosquatting, inexistentes)
+- `edge_cases/` — empty, comments-only, markers, URLs, malformed JSON/TOML
+
+**Tests CLI refactorizados:**
+
+Se refactorizaron `test_cli.py` y `test_cli_edge_cases.py` para que todos los tests usen `tmp_path` con archivos limpios en vez de escanear el directorio raiz del proyecto (`.`). Esto evita interferencia de fixtures de test y hace los tests deterministicos.
+
+**Cobertura por modulo post-QA:**
+
+| Modulo | Cobertura |
+|--------|-----------|
+| `analyzers/deps/parsers.py` | ~97% |
+| `analyzers/deps/registry_client.py` | ~95% |
+| `analyzers/deps/similarity.py` | ~97% |
+| `analyzers/deps/analyzer.py` | ~93% |
+| `core/engine.py` | 99% |
+| `cli.py` | ~85% |
+
+**Totales post-QA FASE 1:**
+- Tests FASE 1: 282 (120 originales + 162 QA)
+- Tests totales proyecto: 632
+- Cobertura global: ~94%
 
 ---
 
