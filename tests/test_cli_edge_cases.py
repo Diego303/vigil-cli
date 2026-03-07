@@ -168,17 +168,18 @@ class TestDepsCommand:
 
 class TestTestsCommand:
     def test_tests_default(self, runner, tmp_path):
-        (tmp_path / "test_app.py").write_text("def test_x(): assert True")
+        (tmp_path / "test_app.py").write_text("def test_x():\n    assert 1 + 1 == 2\n")
         result = runner.invoke(main, ["tests", str(tmp_path)])
         assert result.exit_code == 0
 
     def test_tests_min_assertions(self, runner, tmp_path):
-        (tmp_path / "test_app.py").write_text("def test_x(): assert True")
+        (tmp_path / "test_app.py").write_text("def test_x():\n    assert 1 + 1 == 2\n")
         result = runner.invoke(main, ["tests", str(tmp_path), "--min-assertions", "2"])
-        assert result.exit_code == 0
+        # Only 1 assertion, min is 2 → findings → exit code 1
+        assert result.exit_code == 1
 
     def test_tests_json_format(self, runner, tmp_path):
-        (tmp_path / "test_app.py").write_text("def test_x(): assert True")
+        (tmp_path / "test_app.py").write_text("def test_x():\n    assert 1 + 1 == 2\n")
         result = runner.invoke(main, ["tests", str(tmp_path), "--format", "json"])
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -251,7 +252,7 @@ class TestVersionAndHelp:
     def test_version(self, runner):
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
-        assert "0.3.0" in result.output
+        assert "0.4.0" in result.output
         assert "vigil" in result.output
 
     def test_help_shows_all_commands(self, runner):

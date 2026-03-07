@@ -110,7 +110,7 @@ class TestJsonFormatterEdgeCases:
         formatter = JsonFormatter()
         output = formatter.format(result)
         data = json.loads(output)
-        assert data["version"] == "0.3.0"
+        assert data["version"] == "0.4.0"
 
 
 # ── JUnit Formatter ─────────────────────────────────────────
@@ -313,7 +313,7 @@ class TestHumanFormatterEdgeCases:
         result = ScanResult(files_scanned=5)
         formatter = HumanFormatter()
         output = formatter.format(result)
-        assert "v0.3.0" in output
+        assert "v0.4.0" in output
 
     def test_analyzer_names_listed(self):
         result = ScanResult(

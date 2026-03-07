@@ -6,7 +6,7 @@ vigil is a CLI static analysis tool that detects vulnerabilities and risk patter
 
 It detects hallucinated dependencies (slopsquatting), insecure auth patterns, hardcoded placeholder secrets, and empty test theater. It's a complement to your existing security tools, not a replacement.
 
-> **Status:** v0.3.0 — Core engine, CLI, Dependency Analyzer, Auth Analyzer, and Secrets Analyzer complete with QA audit. Test Quality analyzer under active development.
+> **Status:** v0.4.0 — All 4 analyzers complete with QA audit: Dependency, Auth, Secrets, and Test Quality. 24 of 26 rules implemented. 1170 tests, 98% coverage.
 
 ## The Problem
 
@@ -131,7 +131,7 @@ vigil scan src/ --format junit --output report.xml
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/org/vigil
-    rev: v0.3.0
+    rev: v0.4.0
     hooks:
       - id: vigil
         args: [scan, --changed-only]
@@ -234,7 +234,7 @@ cd vigil
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
-# Run tests (961 tests)
+# Run tests (1170 tests)
 pytest tests/ -v
 
 # Run with coverage (~98% on analyzers)

@@ -320,12 +320,12 @@ def _register_analyzers(engine: ScanEngine) -> None:
     from vigil.analyzers.deps import DependencyAnalyzer
     from vigil.analyzers.auth import AuthAnalyzer
     from vigil.analyzers.secrets import SecretsAnalyzer
+    from vigil.analyzers.tests import TestQualityAnalyzer
 
     engine.register_analyzer(DependencyAnalyzer())
     engine.register_analyzer(AuthAnalyzer())
     engine.register_analyzer(SecretsAnalyzer())
-    # Otros analyzers se registraran en fases posteriores:
-    # engine.register_analyzer(TestQualityAnalyzer())
+    engine.register_analyzer(TestQualityAnalyzer())
 
 
 def _get_changed_files() -> list[str]:

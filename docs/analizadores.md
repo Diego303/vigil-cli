@@ -382,14 +382,107 @@ secrets:
 
 ---
 
-## Analyzer pendiente
+## TestQualityAnalyzer (CAT-06)
 
-### TestQualityAnalyzer (CAT-06) — FASE 3
+**Modulo:** `src/vigil/analyzers/tests/`
+**Categoria:** `test-quality`
+**Reglas activas:** TEST-001, TEST-002, TEST-003, TEST-004, TEST-005, TEST-006
 
-Detectara tests que dan cobertura falsa:
-- Tests sin assertions (TEST-001)
-- Assertions triviales (TEST-002)
-- Captura generica de excepciones en tests (TEST-003)
-- Tests skipped sin razon (TEST-004)
-- Tests de API sin verificar status code (TEST-005)
-- Mocks que replican la implementacion (TEST-006)
+Detecta test theater — tests que pasan pero no verifican nada real. Soporta pytest/unittest (Python) y jest/mocha (JavaScript/TypeScript).
+
+### Arquitectura interna
+
+| Modulo | Responsabilidad |
+|--------|----------------|
+| `analyzer.py` | Orquesta la deteccion, itera archivos de test y funciones |
+| `assert_checker.py` | Extrae funciones de test, cuenta assertions, detecta triviales, catch-all, skips, API tests |
+| `mock_checker.py` | Detecta mock return values y los cruza con assertions para encontrar mirrors |
+| `coverage_heuristics.py` | Identifica archivos de test y detecta framework (pytest, jest, mocha) |
+
+```
+TestQualityAnalyzer.analyze(files, config)
+    |
+    v
+[1. Filtrar archivos de test (.py con test_, .test.js, .spec.ts, etc.)]
+    |
+    v
+[2. TEST-004: find_skips_without_reason() — analisis global]
+    |
+    v
+[3. Extraer funciones de test]
+    +---> Python: extract_python_test_functions() (indentacion)
+    +---> JS: extract_js_test_functions() (conteo de llaves)
+    |
+    v
+[4. Por cada funcion (saltando skipped):]
+    +---> TEST-001: count_assertions() < min_assertions_per_test
+    +---> TEST-002: find_trivial_assertions() (solo si TODAS triviales)
+    +---> TEST-003: find_catch_all_exceptions()
+    +---> TEST-005: is_api_test() && !has_status_code_assertion()
+    +---> TEST-006: find_mock_mirrors()
+    |
+    v
+  list[Finding]
+```
+
+### Reglas implementadas
+
+| Regla | Severidad | Descripcion |
+|-------|-----------|-------------|
+| TEST-001 | HIGH | Test sin assertions (solo verifica que el codigo no crashea) |
+| TEST-002 | MEDIUM | Assertions triviales (`assert True`, `assert x is not None`, `toBeTruthy()`) |
+| TEST-003 | MEDIUM | Catch-all de excepciones (`except Exception: pass`, `catch(e)`) |
+| TEST-004 | LOW | Test skipped sin razon (`@pytest.mark.skip`, `test.skip`, `xit`) |
+| TEST-005 | MEDIUM | Test de API sin verificar status code |
+| TEST-006 | MEDIUM | Mock mirror (mock retorna literal que coincide con assertion) |
+
+Todas las reglas son offline — no requieren red.
+
+### Deteccion de funciones de test
+
+**Python:**
+- `def test_*():` y `async def test_*():` (funciones y metodos de clase)
+- Single-line: `def test_x(): assert True`
+- Fin del body determinado por indentacion
+
+**JavaScript:**
+- `test('name', () => { ... })` y `it('name', () => { ... })`
+- Fin del body determinado por conteo de llaves `{}`
+
+### Heuristica de trivialidad (TEST-002)
+
+Solo se reporta cuando **todas** las assertions de un test son triviales. Si hay al menos una assertion real mezclada con triviales, no se genera finding.
+
+Patrones triviales Python: `assert True`, `assert x` (bare), `assert x is not None`, `assert x is None`, `assertTrue(True)`, `assertIsNotNone(x)`, `assertIsNone(x)`
+
+Patrones triviales JavaScript: `toBeTruthy()`, `toBeDefined()`, `not.toBeNull()`, `not.toBeUndefined()`, `toBe(true)`
+
+### Mock mirrors (TEST-006)
+
+Solo detecta valores literales (numeros, strings, booleans, None/null). Valores complejos (funciones, listas, dicts) se ignoran para evitar falsos positivos.
+
+```python
+# DETECTADO — mock mirror
+mock_calc.return_value = 42
+result = get_price()
+assert result == 42    # Solo prueba que el mock funciona
+
+# NO DETECTADO — valores distintos
+mock_data.return_value = 10
+result = transform()
+assert result == 20    # Prueba logica real
+```
+
+### Configuracion relevante
+
+```yaml
+tests:
+  # Minimo de assertions por test (TEST-001)
+  min_assertions_per_test: 1
+
+  # Detectar assertions triviales (TEST-002)
+  detect_trivial_asserts: true
+
+  # Detectar mock mirrors (TEST-006)
+  detect_mock_mirrors: true
+```

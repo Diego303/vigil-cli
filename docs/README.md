@@ -14,7 +14,7 @@ Bienvenido a la documentacion de **vigil**, el scanner de seguridad para codigo 
 | [Integracion CI/CD](ci-cd.md) | GitHub Actions, GitLab CI, pre-commit hooks y quality gates |
 | [Docker](docker.md) | Uso en contenedores, Dockerfile de referencia y buenas practicas |
 | [Seguridad](seguridad.md) | Modelo de amenazas, que detecta vigil, alineacion OWASP y limitaciones |
-| [Analizadores](analizadores.md) | Referencia tecnica de los analyzers implementados (Dependency, Auth, Secrets) |
+| [Analizadores](analizadores.md) | Referencia tecnica de los analyzers implementados (Dependency, Auth, Secrets, Test Quality) |
 | [Arquitectura](arquitectura.md) | Estructura interna, flujo del engine, protocolo de analyzers |
 | [Buenas practicas](buenas-practicas.md) | Recomendaciones para equipos que usan agentes de IA para generar codigo |
 | [Compliance y uso empresarial](compliance.md) | Alineacion con OWASP, CRA, SOC 2, ISO 27001, NIST y uso en pipelines empresariales |
@@ -22,16 +22,17 @@ Bienvenido a la documentacion de **vigil**, el scanner de seguridad para codigo 
 
 ## Estado del proyecto
 
-vigil esta en desarrollo activo. La version actual (v0.3.0) incluye:
+vigil esta en desarrollo activo. La version actual (v0.4.0) incluye:
 
 - CLI completa con 5 subcomandos (`scan`, `deps`, `tests`, `init`, `rules`)
 - Motor de analisis con soporte para multiples analyzers
 - **Dependency Analyzer activo** — detecta paquetes alucinados, typosquatting, versiones inexistentes (DEP-001, DEP-002, DEP-003, DEP-005, DEP-007)
 - **Auth Analyzer activo** — detecta endpoints sin auth, CORS permisivo, JWT inseguro, cookies sin flags, timing attacks (AUTH-001 a AUTH-007)
 - **Secrets Analyzer activo** — detecta placeholders, secrets de baja entropia, connection strings, env defaults, valores copiados de .env.example (SEC-001 a SEC-004, SEC-006)
-- 26 reglas definidas en 4 categorias (18 implementadas, 8 pendientes)
+- **Test Quality Analyzer activo** — detecta tests sin assertions, assertions triviales, catch-all exceptions, skips sin razon, API tests sin status code, mock mirrors (TEST-001 a TEST-006)
+- 26 reglas definidas en 4 categorias (24 implementadas, 2 pendientes)
 - 4 formatos de salida (human, JSON, JUnit XML, SARIF 2.1.0)
 - Sistema de configuracion con YAML, presets y overrides por CLI
-- 961 tests unitarios (~98% cobertura)
+- 1170 tests unitarios (~98% cobertura)
 
-El analyzer restante (Test Quality) se implementara en la siguiente fase. Consulta el [SEGUIMIENTO-V0.md](../SEGUIMIENTO-V0.md) para el estado detallado.
+Consulta el [SEGUIMIENTO-V0.md](../SEGUIMIENTO-V0.md) para el estado detallado.
