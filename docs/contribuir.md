@@ -201,10 +201,12 @@ En `cli.py`, agregar el analyzer a `_register_analyzers()`:
 ```python
 def _register_analyzers(engine: ScanEngine) -> None:
     from vigil.analyzers.deps import DependencyAnalyzer
+    from vigil.analyzers.auth import AuthAnalyzer
     from vigil.analyzers.secrets import SecretsAnalyzer
     from vigil.analyzers.tests import TestQualityAnalyzer
 
     engine.register_analyzer(DependencyAnalyzer())
+    engine.register_analyzer(AuthAnalyzer())
     engine.register_analyzer(SecretsAnalyzer())
     engine.register_analyzer(TestQualityAnalyzer())
 ```
@@ -326,6 +328,9 @@ pytest -v
 | Config (loader) | 39 |
 | Config (rules) | 34 |
 | Reports (formatters) | 47 |
+| Reports (formatters edge cases) | ~50 |
+| Reports (FASE 4 features) | 77 |
+| Reports (FASE 4 QA) | 89 |
 | Analyzers (deps) | 120 |
 | Analyzers (deps) QA | 126 |
 | Analyzers (auth) | ~130 |
@@ -336,9 +341,9 @@ pytest -v
 | Integration QA (deps) | 13 |
 | Integration (auth+secrets) | ~70 |
 | Logging | 3 |
-| **Total** | **~1170** |
+| **Total** | **~1336** |
 
-Cobertura global: **~98%**
+Cobertura global: **~98%** (99% en modulo reports)
 
 ---
 
@@ -385,7 +390,7 @@ vigil se desarrolla en fases incrementales:
 | **FASE 1** | Dependency analyzer (DEP-001, 002, 003, 005, 007) | Completada (QA done) |
 | **FASE 2** | Auth + Secrets analyzers (AUTH-001..007, SEC-001..006) | Completada (QA done) |
 | **FASE 3** | Test quality analyzer (TEST-001..006) | Completada (QA done) |
-| **FASE 4** | Reports polish | Pendiente |
+| **FASE 4** | Reports polish (formatters, summary, icons, SARIF 2.1.0) | Completada (QA done) |
 | **FASE 5** | Integracion, fixtures realistas, docs | Pendiente |
 | **FASE 6** | Popular packages corpus, polish final | Pendiente |
 

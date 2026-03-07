@@ -110,7 +110,7 @@ class TestJsonFormatterEdgeCases:
         formatter = JsonFormatter()
         output = formatter.format(result)
         data = json.loads(output)
-        assert data["version"] == "0.4.0"
+        assert data["version"] == "0.5.0"
 
 
 # ── JUnit Formatter ─────────────────────────────────────────
@@ -274,8 +274,8 @@ class TestSarifFormatterEdgeCases:
         loc = data["runs"][0]["results"][0]["locations"][0]["physicalLocation"]
         assert "region" not in loc
 
-    def test_sarif_rule_name_pascal_case_bug(self):
-        """BUG: rule names should be PascalCase but current impl just removes spaces."""
+    def test_sarif_rule_name_pascal_case(self):
+        """Rule names are proper PascalCase (fixed in FASE 4)."""
         finding = _make_finding("DEP-001")
         result = ScanResult(findings=[finding])
         formatter = SarifFormatter()
@@ -283,10 +283,7 @@ class TestSarifFormatterEdgeCases:
         data = json.loads(output)
         rules = data["runs"][0]["tool"]["driver"]["rules"]
         dep_rule = [r for r in rules if r["id"] == "DEP-001"][0]
-        # Current behavior: "Hallucinated dependency" -> "Hallucinateddependency"
-        # Expected: "HallucinatedDependency"
-        # This test documents the current behavior
-        assert "name" in dep_rule
+        assert dep_rule["name"] == "HallucinatedDependency"
 
 
 # ── Human Formatter ─────────────────────────────────────────
@@ -313,7 +310,7 @@ class TestHumanFormatterEdgeCases:
         result = ScanResult(files_scanned=5)
         formatter = HumanFormatter()
         output = formatter.format(result)
-        assert "v0.4.0" in output
+        assert "v0.5.0" in output
 
     def test_analyzer_names_listed(self):
         result = ScanResult(

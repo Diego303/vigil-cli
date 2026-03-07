@@ -126,7 +126,12 @@ def scan(
     result = engine.run(scan_paths)
 
     # Formatear y escribir output
-    formatter = get_formatter(output_format)
+    formatter = get_formatter(
+        output_format,
+        colors=scan_config.output.colors,
+        show_suggestions=scan_config.output.show_suggestions,
+        quiet=quiet,
+    )
     report = formatter.format(result)
 
     if output:

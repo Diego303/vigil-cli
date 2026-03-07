@@ -28,42 +28,43 @@ Formato por defecto, optimizado para lectura en terminal. Incluye colores ANSI, 
 
 | Icono | Severidad | Color |
 |-------|-----------|-------|
-| `X` | CRITICAL | Rojo |
-| `X` | HIGH | Rojo |
-| `!` | MEDIUM | Amarillo |
+| `✗` | CRITICAL | Rojo |
+| `✗` | HIGH | Rojo |
+| `⚠` | MEDIUM | Amarillo |
 | `~` | LOW | Azul |
 | `i` | INFO | Cyan |
 
 ### Ejemplo de salida
 
 ```
-  vigil v0.4.0 — scanned 42 files
+  vigil v0.5.0 — scanning 42 files...
 
-  X CRITICAL  DEP-001  requirements.txt:14
+  ✗ CRITICAL  DEP-001  requirements.txt:14
     Package 'python-jwt-utils' does not exist in pypi.
-    This is likely a hallucinated dependency from an AI agent.
-    -> Suggestion: Remove 'python-jwt-utils' and find the correct package name.
+    → Suggestion: Remove 'python-jwt-utils' and find the correct package name.
+    | python-jwt-utils==1.0.0
 
-  X HIGH      AUTH-005  src/main.py:8
+  ✗ HIGH      AUTH-005  src/main.py:8
     CORS configured with '*' allowing requests from any origin.
-    -> Suggestion: Restrict CORS to specific trusted origins.
+    → Suggestion: Restrict CORS to specific trusted origins.
 
-  -------------------------------------------------
+  ─────────────────────────────────────────────────
   42 files scanned in 1.2s
   2 findings: 1 critical, 1 high
-  analyzers: dependency, auth
+  2 analyzers: dependency ✓, auth ✓
 ```
 
 ### Salida limpia (sin findings)
 
 ```
-  vigil v0.4.0 — scanned 42 files
+  vigil v0.5.0 — scanning 42 files...
 
   No findings.
 
-  -------------------------------------------------
+  ─────────────────────────────────────────────────
   42 files scanned in 0.5s
   0 findings
+  2 analyzers: dependency ✓, auth ✓
 ```
 
 ### Colores
@@ -71,6 +72,14 @@ Formato por defecto, optimizado para lectura en terminal. Incluye colores ANSI, 
 - Los colores se activan automaticamente cuando stdout es un TTY (terminal interactiva).
 - Si stdout es un pipe o un archivo, los colores se desactivan automaticamente.
 - Puedes controlar esto con la config `output.colors`.
+
+### Snippets
+
+Si un finding incluye un `snippet` (fragmento de codigo), se muestra debajo de la sugerencia con el prefijo `|`.
+
+### Modo quiet
+
+Con `output.quiet: true` (o la config equivalente), el formato human suprime header y resumen, mostrando solo los findings y errores. Util para integraciones que solo necesitan la lista de problemas.
 
 ### Comportamiento con `--output`
 
@@ -86,9 +95,11 @@ Formato estructurado para procesamiento programatico, integracion con otras herr
 
 ```json
 {
-  "version": "0.4.0",
+  "version": "0.5.0",
   "files_scanned": 42,
   "duration_seconds": 1.2,
+  "analyzers_run": ["dependency", "auth"],
+  "findings_count": 2,
   "findings": [
     {
       "rule_id": "DEP-001",
@@ -107,13 +118,13 @@ Formato estructurado para procesamiento programatico, integracion con otras herr
     }
   ],
   "summary": {
-    "total": 2,
+    "files_scanned": 42,
+    "total_findings": 2,
+    "duration_seconds": 1.2,
+    "analyzers_run": ["dependency", "auth"],
     "by_severity": {
       "critical": 1,
-      "high": 1,
-      "medium": 0,
-      "low": 0,
-      "info": 0
+      "high": 1
     },
     "by_category": {
       "dependency": 1,
@@ -122,8 +133,15 @@ Formato estructurado para procesamiento programatico, integracion con otras herr
     "by_rule": {
       "DEP-001": 1,
       "AUTH-005": 1
-    }
-  }
+    },
+    "by_file": {
+      "requirements.txt": 1,
+      "src/main.py": 1
+    },
+    "has_blocking": true,
+    "errors": []
+  },
+  "errors": []
 }
 ```
 
@@ -134,8 +152,11 @@ Formato estructurado para procesamiento programatico, integracion con otras herr
 | `version` | string | Version de vigil |
 | `files_scanned` | int | Numero de archivos analizados |
 | `duration_seconds` | float | Duracion del scan en segundos |
+| `analyzers_run` | array | Lista de analyzers ejecutados |
+| `findings_count` | int | Numero total de findings |
 | `findings` | array | Lista de findings (vacio si no hay problemas) |
-| `summary` | object | Resumen con conteos por severidad, categoria y regla |
+| `summary` | object | Resumen estadistico (severidad, categoria, regla, archivos top 10) |
+| `errors` | array | Errores de ejecucion de analyzers |
 
 ### Cada finding
 
@@ -145,7 +166,7 @@ Formato estructurado para procesamiento programatico, integracion con otras herr
 | `category` | string | Categoria: `dependency`, `auth`, `secrets`, `test-quality` |
 | `severity` | string | `critical`, `high`, `medium`, `low`, `info` |
 | `message` | string | Descripcion del problema |
-| `location` | object | Ubicacion en el codigo |
+| `location` | object | Ubicacion en el codigo (incluye `snippet` solo si esta presente) |
 | `suggestion` | string\|null | Sugerencia de correccion |
 | `metadata` | object | Datos adicionales especificos de la regla |
 
@@ -173,17 +194,27 @@ Formato compatible con dashboards de CI/CD (Jenkins, GitLab CI, Azure DevOps, et
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <testsuites>
-  <testsuite name="vigil" tests="2" failures="2" errors="0" time="1.2">
-    <testcase name="DEP-001" classname="dependency.requirements.txt">
+  <testsuite name="vigil" tests="2" failures="2" errors="0" time="1.200">
+    <properties>
+      <property name="vigil.version" value="0.5.0" />
+      <property name="vigil.files_scanned" value="42" />
+      <property name="vigil.analyzers" value="dependency,auth" />
+    </properties>
+    <testcase name="DEP-001: requirements.txt:14" classname="vigil.dependency">
       <failure type="error" message="Package 'python-jwt-utils' does not exist in pypi.">
+Rule: DEP-001
 Severity: critical
+Category: dependency
 File: requirements.txt:14
 Suggestion: Remove 'python-jwt-utils' and find the correct package name.
+Snippet: python-jwt-utils==1.0.0
       </failure>
     </testcase>
-    <testcase name="AUTH-005" classname="auth.src/main.py">
-      <failure type="warning" message="CORS configured with '*' allowing requests from any origin.">
+    <testcase name="AUTH-005: src/main.py:8" classname="vigil.auth">
+      <failure type="error" message="CORS configured with '*' allowing requests from any origin.">
+Rule: AUTH-005
 Severity: high
+Category: auth
 File: src/main.py:8
 Suggestion: Restrict CORS to specific trusted origins.
       </failure>
@@ -252,7 +283,8 @@ Static Analysis Results Interchange Format. Formato estandar de la industria par
       "tool": {
         "driver": {
           "name": "vigil",
-          "version": "0.4.0",
+          "version": "0.5.0",
+          "semanticVersion": "0.5.0",
           "informationUri": "https://github.com/org/vigil",
           "rules": [
             {
@@ -261,8 +293,13 @@ Static Analysis Results Interchange Format. Formato estandar de la industria par
               "shortDescription": {
                 "text": "Package declared as dependency does not exist in the public registry."
               },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "helpUri": "https://github.com/org/vigil/docs/rules/DEP-001",
               "properties": {
-                "cwe": "CWE-829"
+                "cwe": "CWE-829",
+                "owasp": "LLM03"
               }
             }
           ]
@@ -271,6 +308,7 @@ Static Analysis Results Interchange Format. Formato estandar de la industria par
       "results": [
         {
           "ruleId": "DEP-001",
+          "ruleIndex": 0,
           "level": "error",
           "message": {
             "text": "Package 'python-jwt-utils' does not exist in pypi."
@@ -282,7 +320,10 @@ Static Analysis Results Interchange Format. Formato estandar de la industria par
                   "uri": "requirements.txt"
                 },
                 "region": {
-                  "startLine": 14
+                  "startLine": 14,
+                  "snippet": {
+                    "text": "python-jwt-utils==1.0.0"
+                  }
                 }
               }
             }
@@ -294,6 +335,12 @@ Static Analysis Results Interchange Format. Formato estandar de la industria par
               }
             }
           ]
+        }
+      ],
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "toolExecutionNotifications": []
         }
       ]
     }
@@ -314,9 +361,16 @@ Static Analysis Results Interchange Format. Formato estandar de la industria par
 ### Elementos SARIF
 
 - **`tool.driver.rules`**: Solo incluye reglas que generaron findings (no las 26 reglas completas).
+- **`tool.driver.semanticVersion`**: Version semantica de vigil.
+- **`defaultConfiguration`**: Nivel por defecto de la regla (`error`, `warning`, `note`).
+- **`helpUri`**: URL a la documentacion de la regla.
+- **`ruleIndex`**: Indice numerico que referencia la posicion de la regla en `tool.driver.rules`.
 - **`results`**: Cada finding como un resultado individual con ubicacion fisica.
+- **`region.snippet`**: Fragmento de codigo, incluido si el finding tiene snippet.
 - **`fixes`**: Si el finding tiene sugerencia, se incluye como `fixes[].description`.
-- **`properties.cwe`**: Si la regla tiene referencia CWE, se incluye en las propiedades.
+- **`invocations`**: Estado de ejecucion y notificaciones de errores de analyzers.
+- **`properties.cwe`**: Referencia CWE si la regla la tiene.
+- **`properties.owasp`**: Referencia OWASP si la regla la tiene.
 
 ### Uso con GitHub Code Scanning
 
