@@ -51,6 +51,8 @@ src/vigil/
   analyzers/          # Analyzers (logica de deteccion)
     base.py           #   BaseAnalyzer Protocol
     deps/             #   DependencyAnalyzer (parsers, registry, similarity)
+    auth/             #   AuthAnalyzer (endpoints, middleware, patterns)
+    secrets/          #   SecretsAnalyzer (placeholders, entropy, env tracing)
   reports/            # Formateadores de salida
   logging/            # Setup de structlog
 tests/
@@ -60,8 +62,12 @@ tests/
   test_reports/       # Tests de formateadores
   test_analyzers/     # Tests de analyzers
     test_deps/        #   Tests del DependencyAnalyzer
+    test_auth/        #   Tests del AuthAnalyzer
+    test_secrets/     #   Tests del SecretsAnalyzer
   fixtures/           # Archivos de prueba
     deps/             #   Fixtures de dependencias
+    auth/             #   Fixtures de auth
+    secrets/          #   Fixtures de secrets
 docs/                 # Documentacion
 ```
 
@@ -317,12 +323,15 @@ pytest -v
 | Reports (formatters) | 47 |
 | Analyzers (deps) | 120 |
 | Analyzers (deps) QA | 126 |
+| Analyzers (auth) | ~130 |
+| Analyzers (secrets) | ~130 |
 | Integration | 14 |
 | Integration QA (deps) | 13 |
+| Integration (auth+secrets) | ~70 |
 | Logging | 3 |
-| **Total** | **~632** |
+| **Total** | **~961** |
 
-Cobertura global: **~94%**
+Cobertura global: **~98%**
 
 ---
 
@@ -367,7 +376,7 @@ vigil se desarrolla en fases incrementales:
 |------|-------------|--------|
 | **FASE 0** | Scaffolding, config, engine, CLI, formatters, rule catalog | Completada (QA done) |
 | **FASE 1** | Dependency analyzer (DEP-001, 002, 003, 005, 007) | Completada (QA done) |
-| **FASE 2** | Auth + Secrets analyzers (AUTH-001..007, SEC-001..006) | Pendiente |
+| **FASE 2** | Auth + Secrets analyzers (AUTH-001..007, SEC-001..006) | Completada (QA done) |
 | **FASE 3** | Test quality analyzer (TEST-001..006) | Pendiente |
 | **FASE 4** | Reports polish | Pendiente |
 | **FASE 5** | Integracion, fixtures realistas, docs | Pendiente |

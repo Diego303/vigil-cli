@@ -145,26 +145,244 @@ Con `--offline` o `deps.offline_mode: true`:
 
 ---
 
-## Analyzers pendientes
+## AuthAnalyzer (CAT-02)
 
-### AuthAnalyzer (CAT-02) — FASE 2
+**Modulo:** `src/vigil/analyzers/auth/`
+**Categoria:** `auth`
+**Reglas activas:** AUTH-001, AUTH-002, AUTH-003, AUTH-004, AUTH-005, AUTH-006, AUTH-007
 
-Detectara patrones de autenticacion inseguros en FastAPI, Flask y Express mediante regex:
-- Endpoints sin auth middleware (AUTH-001, AUTH-002)
-- CORS con `*` (AUTH-005)
-- JWT con secrets hardcodeados (AUTH-004)
-- Cookies sin flags de seguridad (AUTH-006)
-- Comparacion de passwords no timing-safe (AUTH-007)
+Detecta patrones de autenticacion y autorizacion inseguros en Python (FastAPI/Flask) y JavaScript (Express) mediante pattern matching con regex.
 
-### SecretsAnalyzer (CAT-03) — FASE 2
+### Arquitectura interna
 
-Detectara secrets y credenciales en codigo:
-- Placeholders copiados de docs/ejemplos (SEC-001)
-- Secrets con entropia baja (SEC-002)
-- Connection strings con credenciales (SEC-003)
-- Variables de entorno con defaults sensibles (SEC-004)
-- Archivos de secrets fuera de .gitignore (SEC-005)
-- Valores copiados de .env.example (SEC-006)
+El analyzer se compone de 4 modulos:
+
+| Modulo | Responsabilidad |
+|--------|----------------|
+| `analyzer.py` | Orquesta la deteccion, itera archivos y lineas |
+| `endpoint_detector.py` | Detecta endpoints HTTP (decorators en Python, `app.get/post/...` en JS) |
+| `middleware_checker.py` | Verifica si un endpoint tiene middleware de auth (`Depends(...)`, `passport`, etc.) |
+| `patterns.py` | Patrones regex para JWT lifetime, secrets hardcodeados, CORS, cookies, passwords |
+
+```
+AuthAnalyzer.analyze(files, config)
+    |
+    v
+[1. Filtrar archivos relevantes (.py, .js, .ts, .jsx, .tsx)]
+    |
+    v
+[2. detect_endpoints(content)]  -->  Lista de EndpointInfo
+    |                                 (ruta, metodo, linea, framework)
+    v
+[3. check_endpoint_auth(ep)]  -->  AUTH-001 / AUTH-002 findings
+    |
+    v
+[4. _check_lines() por linea]
+    +---> AUTH-003: JWT lifetime excesivo
+    +---> AUTH-004: Secret hardcodeado con baja entropy
+    +---> AUTH-005: CORS allow all origins
+    +---> AUTH-006: Cookie sin flags de seguridad
+    +---> AUTH-007: Password comparison no timing-safe
+    |
+    v
+  list[Finding]
+```
+
+### Reglas implementadas
+
+| Regla | Severidad | Requiere red | Descripcion |
+|-------|-----------|-------------|-------------|
+| AUTH-001 | HIGH | No | Endpoint sensible sin auth middleware |
+| AUTH-002 | HIGH | No | Endpoint mutante (DELETE/PUT/PATCH) sin auth |
+| AUTH-003 | MEDIUM | No | JWT con lifetime excesivo (>24h por defecto) |
+| AUTH-004 | CRITICAL | No | JWT secret hardcodeado con baja entropy |
+| AUTH-005 | HIGH | No | CORS configurado con `*` (allow all) |
+| AUTH-006 | MEDIUM | No | Cookie sin flags de seguridad (httpOnly, secure, sameSite) |
+| AUTH-007 | MEDIUM | No | Comparacion de passwords con `==` (vulnerable a timing attacks) |
+
+Todas las reglas son offline — no requieren red. Solo analizan codigo fuente.
+
+### Deteccion de endpoints
+
+El `endpoint_detector` detecta endpoints HTTP en tres frameworks:
+
+**FastAPI/Flask (Python):**
+```python
+@app.get("/users/{user_id}")        # Detectado
+@router.delete("/users/{user_id}")  # Detectado
+@app.route("/admin", methods=["POST"])  # Detectado
+```
+
+**Express (JavaScript):**
+```javascript
+app.get("/users/:id", handler)       // Detectado
+router.delete("/users/:id", handler) // Detectado
+```
+
+La deteccion de auth middleware busca:
+- Python: `Depends(...)`, `login_required`, `@requires_auth`, `Permission`, `current_user`
+- JavaScript: `passport`, `authenticate`, `isAuthenticated`, `requireAuth`, `authMiddleware`
+
+### Heuristicas de endpoints sensibles (AUTH-001)
+
+Un endpoint se considera sensible si su ruta contiene tokens como:
+`user`, `admin`, `account`, `profile`, `payment`, `order`, `billing`, `settings`, `password`, `token`, `auth`, `session`, `dashboard`
+
+### Configuracion relevante
+
+```yaml
+auth:
+  # Maximo horas de lifetime para JWT (AUTH-003)
+  max_token_lifetime_hours: 24
+
+  # Requerir auth en endpoints mutantes (AUTH-002)
+  require_auth_on_mutating: true
+
+  # Permitir CORS abierto en archivos de dev/test (AUTH-005)
+  cors_allow_localhost: true
+```
+
+### Integracion con SecretsAnalyzer
+
+AUTH-004 (hardcoded JWT secret) usa `shannon_entropy()` del modulo `secrets/entropy.py` para calcular la entropia del valor. Solo reporta secrets con entropia < 4.0 bits/char (placeholders tipicos como `"supersecret"` o `"secret123"`). Los secrets con alta entropia se dejan para SEC-002.
+
+---
+
+## SecretsAnalyzer (CAT-03)
+
+**Modulo:** `src/vigil/analyzers/secrets/`
+**Categoria:** `secrets`
+**Reglas activas:** SEC-001, SEC-002, SEC-003, SEC-004, SEC-006
+
+Detecta secrets y credenciales mal gestionados en codigo, con enfasis en patrones tipicos de codigo generado por IA: placeholders copiados, secrets de baja entropia, y valores de `.env.example` embebidos.
+
+### Arquitectura interna
+
+| Modulo | Responsabilidad |
+|--------|----------------|
+| `analyzer.py` | Orquesta la deteccion, aplica checks por linea y por archivo |
+| `placeholder_detector.py` | Compila regex de placeholders, detecta assignments de secrets |
+| `entropy.py` | Calcula Shannon entropy para distinguir secrets reales de placeholders |
+| `env_tracer.py` | Parsea `.env.example`, busca valores copiados en codigo fuente |
+
+```
+SecretsAnalyzer.analyze(files, config)
+    |
+    v
+[1. Compilar placeholder_patterns (30 regex)]
+    |
+    v
+[2. Cargar .env.example entries (si check_env_example=true)]
+    |
+    v
+[3. Por cada archivo relevante (.py, .js, .ts, ...)]
+    +---> SEC-006: find_env_values_in_code() contra entries de .env.example
+    +---> SEC-003: Connection strings con credenciales (postgresql://, mongodb://, etc.)
+    +---> SEC-004: Env vars sensibles con default hardcodeado
+    +---> SEC-001: Secret assignment con valor placeholder
+    +---> SEC-002: Secret assignment con baja entropy
+    |
+    v
+  list[Finding]
+```
+
+### Reglas implementadas
+
+| Regla | Severidad | Descripcion |
+|-------|-----------|-------------|
+| SEC-001 | CRITICAL | Valor placeholder en codigo (`"your-api-key-here"`, `"changeme"`, etc.) |
+| SEC-002 | CRITICAL | Secret hardcodeado con baja entropy (< 3.0 bits/char por defecto) |
+| SEC-003 | CRITICAL | Connection string con credenciales embebidas (postgresql://, mongodb://, etc.) |
+| SEC-004 | HIGH | Variable de entorno sensible con valor default en codigo |
+| SEC-006 | CRITICAL | Valor copiado textualmente de `.env.example` al codigo fuente |
+
+### Regla diferida
+
+| Regla | Razon | Estimacion |
+|-------|-------|------------|
+| SEC-005 (file not in gitignore) | Requiere analisis de `.gitignore` con patrones glob | V1 o FASE posterior |
+
+### Deteccion de placeholders (SEC-001)
+
+El analyzer viene con **30 patrones regex** de placeholders conocidos, configurables via `secrets.placeholder_patterns`:
+
+- Valores genericos: `changeme`, `TODO`, `FIXME`, `placeholder`, `xxx+`
+- Patrones con template: `your-*-here`, `replace-me`, `insert-*-here`, `put-*-here`, `add-*-here`
+- Prefijos de API keys: `sk-your*`, `pk_test_*`, `sk_test_*`, `sk_live_test*`
+- Valores tipicos de AI: `secret123`, `password123`, `supersecret`, `mysecret`, `my-secret-key`
+- Valores de ejemplo: `example.com`, `test-key`, `dummy-key`, `fake-key`, `sample-key`, `default-secret`
+
+### Shannon entropy (SEC-002)
+
+La deteccion de secrets de baja entropia usa el calculo de Shannon entropy:
+
+- `"password123"` → ~2.8 bits/char (placeholder)
+- `"xK8$mP2!qR"` → ~3.3 bits/char (borderline)
+- `"a1b2c3d4e5f6g7h8"` → ~4.0 bits/char (probablemente real)
+
+El threshold por defecto es 3.0 bits/char. Se configura con `secrets.min_entropy`.
+
+### Deteccion de connection strings (SEC-003)
+
+Protocolos soportados: `postgresql`, `postgres`, `mysql`, `mariadb`, `mongodb`, `mongodb+srv`, `redis`, `amqp`, `rabbitmq`, `sqlserver`, `mssql`.
+
+```python
+# Detectado
+DATABASE_URL = "postgresql://admin:password123@db.example.com:5432/mydb"
+
+# NO detectado (usa variable de entorno en el password)
+DATABASE_URL = f"postgresql://admin:${DB_PASS}@db.example.com:5432/mydb"
+```
+
+En los snippets de output, el password se redacta automaticamente: `postgresql://admin:***@db.example.com:5432/mydb`.
+
+### Deteccion de env defaults (SEC-004)
+
+Detecta variables de entorno sensibles con valores por defecto hardcodeados:
+
+```python
+# Python — detectado
+SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret")
+API_KEY = os.environ.get("API_KEY", "test-key-123")
+
+# JavaScript — detectado
+const secret = process.env.SECRET_KEY || "mysecret"
+const key = process.env["API_KEY"] || "default-key"
+```
+
+Solo reporta si el nombre de la variable contiene tokens sensibles: `SECRET`, `KEY`, `TOKEN`, `PASSWORD`, `API_KEY`, `AUTH`, `JWT`, `DATABASE_URL`, `DB_PASS`, `PRIVATE_KEY`, `ENCRYPTION`, `SIGNING`, `STRIPE`, `AWS`.
+
+### Tracing de .env.example (SEC-006)
+
+Si `secrets.check_env_example: true` (default), el analyzer:
+
+1. Busca archivos `.env.example`, `.env.sample`, `.env.template` en los directorios raiz.
+2. Parsea cada archivo extrayendo pares `KEY=value`.
+3. Busca esos valores exactos en el codigo fuente.
+4. Si un valor de `.env.example` aparece en un `.py` o `.js`, genera SEC-006 CRITICAL.
+
+### Configuracion relevante
+
+```yaml
+secrets:
+  # Entropia minima de Shannon para SEC-002
+  min_entropy: 3.0
+
+  # Comparar con .env.example para SEC-006
+  check_env_example: true
+
+  # Patrones regex de placeholders para SEC-001
+  # (lista de 30 patrones por defecto — ver schema.py)
+  placeholder_patterns:
+    - "changeme"
+    - "your-.*-here"
+    - "replace-?me"
+    # ... (30 patrones por defecto)
+```
+
+---
+
+## Analyzer pendiente
 
 ### TestQualityAnalyzer (CAT-06) — FASE 3
 

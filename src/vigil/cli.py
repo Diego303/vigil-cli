@@ -318,11 +318,13 @@ def rules() -> None:
 def _register_analyzers(engine: ScanEngine) -> None:
     """Registra todos los analyzers disponibles en el engine."""
     from vigil.analyzers.deps import DependencyAnalyzer
+    from vigil.analyzers.auth import AuthAnalyzer
+    from vigil.analyzers.secrets import SecretsAnalyzer
 
     engine.register_analyzer(DependencyAnalyzer())
+    engine.register_analyzer(AuthAnalyzer())
+    engine.register_analyzer(SecretsAnalyzer())
     # Otros analyzers se registraran en fases posteriores:
-    # engine.register_analyzer(AuthAnalyzer())
-    # engine.register_analyzer(SecretsAnalyzer())
     # engine.register_analyzer(TestQualityAnalyzer())
 
 

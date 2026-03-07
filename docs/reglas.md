@@ -144,7 +144,7 @@ flask==99.0.0        # Esta version no existe
 
 ## CAT-02: Auth & Permission Patterns
 
-> **Estado: PENDIENTE** — Las reglas AUTH-001 a AUTH-007 estan definidas pero el `AuthAnalyzer` aun no esta implementado (FASE 2).
+> **Estado: IMPLEMENTADO** — El `AuthAnalyzer` esta activo desde v0.3.0. Todas las reglas AUTH-001 a AUTH-007 estan implementadas. Soporta Python (FastAPI/Flask) y JavaScript (Express).
 
 Detecta patrones de autenticacion y autorizacion inseguros que los agentes de IA generan con frecuencia.
 
@@ -285,7 +285,7 @@ if hmac.compare_digest(user.password_hash, computed_hash):
 
 ## CAT-03: Secrets & Credentials
 
-> **Estado: PENDIENTE** — Las reglas SEC-001 a SEC-006 estan definidas pero el `SecretsAnalyzer` aun no esta implementado (FASE 2).
+> **Estado: IMPLEMENTADO** — El `SecretsAnalyzer` esta activo desde v0.3.0. Las reglas SEC-001 a SEC-004 y SEC-006 estan implementadas. SEC-005 esta diferida (requiere analisis de .gitignore). Soporta Python y JavaScript/TypeScript.
 
 Detecta secrets y credenciales que los agentes de IA copian de ejemplos o generan de forma insegura.
 
@@ -354,11 +354,12 @@ SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret-not-for-production")
 
 ---
 
-### SEC-005 — Secret file not in gitignore
+### SEC-005 — Secret file not in gitignore (pendiente)
 
 | Campo | Valor |
 |-------|-------|
 | Severidad | HIGH |
+| Estado | **Diferida** — requiere analisis de `.gitignore` |
 
 **Que detecta:** Archivos que contienen credenciales o keys y no estan listados en `.gitignore`.
 
