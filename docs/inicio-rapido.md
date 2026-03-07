@@ -29,7 +29,7 @@ pip install -e ".[dev]"
 
 ```bash
 vigil --version
-# vigil, version 0.4.0
+# vigil, version 0.5.0
 ```
 
 ## Primer scan
@@ -43,7 +43,7 @@ vigil scan src/
 Ejemplo de salida cuando no hay problemas:
 
 ```
-  vigil v0.4.0 — scanned 42 files
+  vigil v0.5.0 — scanned 42 files
 
   No findings.
 
@@ -55,7 +55,7 @@ Ejemplo de salida cuando no hay problemas:
 Ejemplo de salida con hallazgos:
 
 ```
-  vigil v0.4.0 — scanned 42 files
+  vigil v0.5.0 — scanned 42 files
 
   X CRITICAL  DEP-001  requirements.txt:14
     Package 'python-jwt-utils' does not exist in pypi.
@@ -117,7 +117,7 @@ vigil organiza sus reglas en categorias:
 
 ## Que esta activo ahora
 
-En la version actual (v0.4.0), los cuatro analyzers estan completamente funcionales:
+En la version actual (v0.5.0), los cuatro analyzers estan completamente funcionales:
 
 ### Dependency Analyzer (DEP-001 a DEP-007)
 - Detecta paquetes que no existen en PyPI/npm (slopsquatting)

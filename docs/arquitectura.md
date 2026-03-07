@@ -73,6 +73,9 @@ vigil-cli/
       test_rules.py
     test_reports/
       test_formatters.py
+      test_formatters_edge_cases.py
+      test_fase4_formatters.py    # Tests de mejoras FASE 4
+      test_fase4_qa.py            # QA: regresion, edge cases, consistency
     test_analyzers/
       test_deps/
         test_parsers.py           # Tests de parsers de dependencias
@@ -474,14 +477,38 @@ class BaseFormatter(Protocol):
 
 ### Factory
 
-`get_formatter(format_name)` retorna la clase correcta con lazy import:
+`get_formatter(format_name, **kwargs)` retorna la clase correcta con lazy import. Solo `HumanFormatter` acepta `**kwargs`; los demas los ignoran:
 
 ```python
-"human"  -> HumanFormatter
+"human"  -> HumanFormatter(colors=True, show_suggestions=True, quiet=False)
 "json"   -> JsonFormatter
 "junit"  -> JunitFormatter
 "sarif"  -> SarifFormatter
 ```
+
+### HumanFormatter
+
+Constructor acepta tres opciones:
+
+| Opcion | Default | Descripcion |
+|--------|---------|-------------|
+| `colors` | `True` | Habilita colores ANSI (auto-detecta TTY) |
+| `show_suggestions` | `True` | Muestra sugerencias de correccion |
+| `quiet` | `False` | Suprime header y resumen, solo findings y errores |
+
+Iconos Unicode: `✗` (critical/high), `⚠` (medium), `~` (low), `i` (info). Separadores y flechas: `─`, `→`, `✓`.
+
+### JsonFormatter
+
+Incluye campos `analyzers_run`, `findings_count`, `errors` a nivel raiz. El `summary` se genera via `build_summary()` con desglose por severidad, categoria, regla, archivos top 10, y flag `has_blocking`. El campo `snippet` en `location` solo se incluye si esta presente.
+
+### JunitFormatter
+
+Incluye un elemento `<properties>` con metadata del scan (`vigil.version`, `vigil.files_scanned`, `vigil.analyzers`). El texto de `<failure>` incluye `Rule`, `Severity`, `Category`, `File`, `Suggestion`, y `Snippet`. El atributo `tests` cuenta findings + errores.
+
+### SarifFormatter
+
+Cumple con SARIF 2.1.0. Incluye `semanticVersion`, `defaultConfiguration` por regla, `helpUri`, `ruleIndex` en resultados, `snippet` en region, `invocations` con estado de ejecucion y errores, y referencias OWASP/CWE en `properties`. Los nombres de reglas se convierten a PascalCase.
 
 ### Flujo de output
 

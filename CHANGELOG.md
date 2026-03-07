@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-03-07
+
+### Added
+
+- **Report formatters polish (FASE 4)** — all 4 output formatters improved with production-quality features
+  - **HumanFormatter** — quiet mode (`--quiet`), configurable suggestions display (`show_suggestions`), ANSI color toggle, Unicode icons (✗ for critical/high, ⚠ for medium, → for suggestions, ─ for summary separator, ✓ for analyzers)
+  - **JsonFormatter** — `summary` section with `build_summary()` statistics, conditional `snippet` in location (omitted when `None`)
+  - **JunitFormatter** — `<properties>` element with `vigil.version`, `vigil.files_scanned`, `vigil.analyzers`; `Category` and `Snippet` in failure text; `tests` count now includes error testcases
+  - **SarifFormatter** — PascalCase rule names via `_to_pascal_case()`, `helpUri` per rule, `ruleIndex` on results, `snippet` in region, `invocations` with `executionSuccessful` and `toolExecutionNotifications`, `defaultConfiguration` with severity level, `semanticVersion`, OWASP/CWE in rule `properties`
+  - **Summary builder** — `by_file` top 10 most-affected files ranking
+  - **Formatter factory** — `get_formatter()` accepts `**kwargs` for HumanFormatter options; other formatters ignore unknown kwargs gracefully
+  - **CLI wiring** — `vigil scan` passes `colors`, `show_suggestions`, `quiet` options from config to formatter
+- **166 new tests for FASE 4** (1336 total) across 2 test files:
+  - `tests/test_reports/test_fase4_formatters.py` — 77 tests covering all FASE 4 improvements
+  - `tests/test_reports/test_fase4_qa.py` — 89 QA tests including regression, edge cases, false positives, cross-formatter consistency, configuration combinations, schema compliance, special character escaping, and metadata handling
+- **99% coverage** on the reports module (209 statements, 3 missed — TTY detection branch)
+
+### Fixed
+
+- **"No findings." displayed with analyzer errors** — HumanFormatter showed the green "No findings." message even when `result.errors` was non-empty, giving a false sense of a clean scan. Now only shown when both findings and errors are empty.
+- **SARIF ruleIndex unsafe default** — `rule_index_map.get(finding.rule_id, 0)` silently defaulted to index 0 for unrecognized rule IDs, potentially pointing to the wrong rule. Changed to direct key access that fails fast if a rule_id is unexpectedly missing.
+- **SARIF double registry lookup** — `registry.get(rid)` was called twice per rule (once in filter, once in method call). Refactored to single lookup using walrus operator.
+- **JUnit tests count missing error testcases** — `tests` attribute on `<testsuite>` only counted findings, not error testcases. JUnit validators could report mismatched totals. Now counts `findings + errors`.
+
 ## [0.4.0] — 2026-03-07
 
 ### Added

@@ -13,15 +13,15 @@
 | FASE 1 | Dependency Analyzer | COMPLETADA (QA done) | 282 |
 | FASE 2 | Auth & Secrets Analyzers | COMPLETADA (QA done) | 329 |
 | FASE 3 | Test Quality Analyzer | COMPLETADA (QA done) | 209 |
-| FASE 4 | Reports + Formatters | Pendiente | — |
+| FASE 4 | Reports + Formatters | COMPLETADA (QA done) | 166 |
 | FASE 5 | Integration + Testing + Docs | Pendiente | — |
 | FASE 6 | Data + Polish | Pendiente | — |
 
 **Metricas actuales:**
-- Tests totales: 1170 (todos pasando, 0 warnings)
-- Cobertura FASE 3: 98% (349 statements, 7 missed)
+- Tests totales: 1336 (todos pasando, 0 warnings)
+- Cobertura reports module: 99% (209 statements, 3 missed)
 - Archivos fuente: 39
-- Archivos de test: 41
+- Archivos de test: 43
 
 ---
 
@@ -913,12 +913,125 @@ Se realizo una auditoria exhaustiva del codigo de FASE 3. Se encontraron 6 bugs 
 
 ## FASE 4 — Reports + Formatters
 
-**Estado: Parcialmente completada (base en FASE 0)**
+**Objetivo:** Pulir los 4 formatters de output para produccion: human con colores/iconos Unicode, JSON con summary, JUnit con properties/metadata, SARIF 2.1.0 compliant para GitHub/GitLab Code Scanning.
 
-Los 4 formatters (human, JSON, JUnit, SARIF) ya estan implementados funcionalmente. Pendiente:
-- Polish del human formatter con findings reales
-- Validacion de SARIF contra el schema oficial
-- Mejoras de presentacion con findings de multiples categorias
+**Estado: COMPLETADA**
+
+### F4.1 — HumanFormatter polish
+
+**Archivo:** `src/vigil/reports/human.py`
+
+- Constructor con opciones configurables: `colors` (bool), `show_suggestions` (bool), `quiet` (bool)
+- `_use_colors()` — metodo de instancia que verifica config + `sys.stdout.isatty()`
+- Iconos Unicode: `✗` (U+2717) para critical/high, `⚠` (U+26A0) para medium, `~` para low, `i` para info
+- Flecha de sugerencia `→` (U+2192) con `Suggestion:` prefix
+- Snippet con pipe `|` visual
+- Header con em-dash `—` (U+2014): `vigil v0.5.0 — scanning N files...`
+- Separator con box-drawing `─` (U+2500) × 49
+- Checkmarks `✓` (U+2713) en lista de analyzers
+- Quiet mode: sin header ni summary, solo findings y errores
+- Severity breakdown en summary: `2 critical, 1 high, 1 medium`
+- "No findings." en verde solo cuando no hay findings NI errores
+
+### F4.2 — JsonFormatter polish
+
+**Archivo:** `src/vigil/reports/json_fmt.py`
+
+- Campo `summary` con `build_summary()` incluido en output
+- `snippet` en location solo cuando `finding.location.snippet is not None` (omitido si None)
+- `default=str` en `json.dumps` para manejo de tipos no serializables (ej. `Path`)
+- Estructura completa: version, files_scanned, duration_seconds, analyzers_run, findings_count, findings, summary, errors
+
+### F4.3 — JunitFormatter polish
+
+**Archivo:** `src/vigil/reports/junit.py`
+
+- Elemento `<properties>` con metadata del scan: `vigil.version`, `vigil.files_scanned`, `vigil.analyzers`
+- `Category` incluida en failure text
+- `Snippet` incluido en failure text (condicional)
+- Atributo `tests` ahora cuenta findings + errors (no solo findings)
+- Error testcases con `<error>` element y message attribute
+
+### F4.4 — SarifFormatter polish
+
+**Archivo:** `src/vigil/reports/sarif.py`
+
+- `_to_pascal_case()` — convierte rule names a PascalCase via regex `[\s\-_]+` word splitting
+- `helpUri` en cada rule: `https://github.com/org/vigil/docs/rules/{rule_id}`
+- `ruleIndex` en results referenciando posicion en `driver.rules` (sorted alphabetically)
+- `snippet` en `region` como `{"text": snippet}` (condicional)
+- `invocations` con `executionSuccessful` (bool) y `toolExecutionNotifications` para errores
+- `defaultConfiguration` con `level` (error/warning/note) en cada rule
+- `semanticVersion` igual a `version` en tool driver
+- `properties` con `cwe` y `owasp` refs (condicionales)
+- Walrus operator `:=` para single-pass registry lookup en rule generation
+- Direct key access en `rule_index_map[finding.rule_id]` (fail-fast vs silent default)
+
+### F4.5 — Summary builder polish
+
+**Archivo:** `src/vigil/reports/summary.py`
+
+- `by_file` — top 10 archivos con mas findings, ordenados por count descendente
+- Solo categorias/severidades con count > 0 aparecen en output
+- Duration redondeada a 3 decimales
+
+### F4.6 — Formatter factory
+
+**Archivo:** `src/vigil/reports/formatter.py`
+
+- `get_formatter(format_name, **kwargs)` — factory con kwargs pass-through
+- HumanFormatter recibe `colors`, `show_suggestions`, `quiet`
+- JSON, JUnit, SARIF ignoran kwargs extra sin error
+
+### F4.7 — CLI wiring
+
+**Archivo modificado:** `src/vigil/cli.py`
+
+- `vigil scan` pasa `colors=scan_config.output.colors`, `show_suggestions=scan_config.output.show_suggestions`, `quiet=quiet` a `get_formatter()`
+
+### Resumen de tests FASE 4
+
+| Archivo | Tests | Cobertura |
+|---------|-------|-----------|
+| `test_reports/test_fase4_formatters.py` | 77 | HumanFormatter (quiet, suggestions, colors, icons, header, summary), JsonFormatter (summary, snippet), JunitFormatter (properties, category, snippet, integral), SarifFormatter (PascalCase, helpUri, snippet, ruleIndex, invocations, defaultConfiguration, semanticVersion, OWASP, integral), Summary (by_file), Factory (kwargs), Edge cases |
+| `test_reports/test_fase4_qa.py` | 89 | Regression (4 bugs), edge cases (all formatters), PascalCase, summary, false positives, cross-formatter consistency, output validity, option combinations, schema compliance (SARIF), XML structure (JUnit), JSON structure, human rendering, special characters, metadata |
+| **Total FASE 4 (pre-QA + QA)** | **166** | **99% reports module** |
+
+### F4.QA — Auditoria de calidad y tests adicionales
+
+**Estado: COMPLETADA**
+
+Se realizo una auditoria exhaustiva del codigo de FASE 4. Se encontraron 3 bugs y 1 issue de robustez, todos corregidos.
+
+**Bugs corregidos:**
+
+1. **`human.py:74`** — "No findings." se mostraba incluso cuando habia errores de analyzer (`result.errors` no vacio), dando falsa impresion de scan limpio. Agregada condicion `and not result.errors`.
+2. **`sarif.py:131`** — `rule_index_map.get(finding.rule_id, 0)` usaba default 0 para rule IDs desconocidos, potencialmente apuntando a la regla incorrecta. Cambiado a acceso directo `rule_index_map[finding.rule_id]` (fail-fast).
+3. **`junit.py:25`** — Atributo `tests` en `<testsuite>` solo contaba findings, no error testcases. Validadores JUnit podian reportar totales inconsistentes. Cambiado a `len(findings) + len(errors)`.
+
+**Mejora de robustez:**
+
+4. **`sarif.py:64-67`** — Doble llamada a `registry.get(rid)` por regla (una en filtro, otra en metodo). Refactorizado con walrus operator `:=` para single-pass.
+
+**Cobertura por modulo post-QA:**
+
+| Modulo | Stmts | Miss | Cobertura |
+|--------|-------|------|-----------|
+| `reports/__init__.py` | 0 | 0 | 100% |
+| `reports/formatter.py` | 22 | 0 | 100% |
+| `reports/human.py` | 68 | 3 | 96% |
+| `reports/json_fmt.py` | 15 | 0 | 100% |
+| `reports/junit.py` | 38 | 0 | 100% |
+| `reports/sarif.py` | 44 | 0 | 100% |
+| `reports/summary.py` | 22 | 0 | 100% |
+| **Total FASE 4** | **209** | **3** | **99%** |
+
+Los 3 misses en `human.py` (lineas 54-56) corresponden al branch de colores ANSI que solo se activa con `sys.stdout.isatty() == True`, no testeado en pytest.
+
+**Totales post-QA FASE 4:**
+- Tests FASE 4: 166 (77 originales + 89 QA)
+- Tests totales proyecto: 1336
+- Cobertura reports module: 99%
 
 ---
 

@@ -22,7 +22,7 @@ Bienvenido a la documentacion de **vigil**, el scanner de seguridad para codigo 
 
 ## Estado del proyecto
 
-vigil esta en desarrollo activo. La version actual (v0.4.0) incluye:
+vigil esta en desarrollo activo. La version actual (v0.5.0) incluye:
 
 - CLI completa con 5 subcomandos (`scan`, `deps`, `tests`, `init`, `rules`)
 - Motor de analisis con soporte para multiples analyzers
