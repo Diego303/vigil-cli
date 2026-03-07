@@ -29,7 +29,7 @@ pip install -e ".[dev]"
 
 ```bash
 vigil --version
-# vigil, version 0.2.0
+# vigil, version 0.3.0
 ```
 
 ## Primer scan
@@ -43,7 +43,7 @@ vigil scan src/
 Ejemplo de salida cuando no hay problemas:
 
 ```
-  vigil v0.2.0 — scanned 42 files
+  vigil v0.3.0 — scanned 42 files
 
   No findings.
 
@@ -55,7 +55,7 @@ Ejemplo de salida cuando no hay problemas:
 Ejemplo de salida con hallazgos:
 
 ```
-  vigil v0.2.0 — scanned 42 files
+  vigil v0.3.0 — scanned 42 files
 
   X CRITICAL  DEP-001  requirements.txt:14
     Package 'python-jwt-utils' does not exist in pypi.
@@ -117,23 +117,39 @@ vigil organiza sus reglas en categorias:
 
 ## Que esta activo ahora
 
-En la version actual (v0.2.0), el **Dependency Analyzer** esta completamente funcional:
+En la version actual (v0.3.0), tres analyzers estan completamente funcionales:
 
+### Dependency Analyzer (DEP-001 a DEP-007)
 - Detecta paquetes que no existen en PyPI/npm (slopsquatting)
 - Detecta nombres similares a paquetes populares (typosquatting)
 - Verifica que las versiones pinneadas existan
-- Detecta paquetes sospechosamente nuevos
-- Detecta paquetes sin repositorio fuente
+- Detecta paquetes sospechosamente nuevos y sin repositorio fuente
+
+### Auth Analyzer (AUTH-001 a AUTH-007)
+- Detecta endpoints sin middleware de autenticacion
+- Detecta CORS configurado con `*`
+- Detecta JWT con lifetime excesivo o secret hardcodeado
+- Detecta cookies sin flags de seguridad
+- Detecta comparacion de passwords no timing-safe
+
+### Secrets Analyzer (SEC-001 a SEC-006)
+- Detecta placeholders copiados de documentacion o `.env.example`
+- Detecta secrets con entropia baja (generados por AI)
+- Detecta connection strings con credenciales embebidas
+- Detecta variables de entorno con defaults sensibles
 
 ```bash
-# Verificar dependencias del proyecto
+# Scan completo (deps + auth + secrets)
+vigil scan src/
+
+# Solo dependencias
 vigil deps
 
 # Solo checks estaticos (sin HTTP)
-vigil deps --offline
+vigil scan src/ --offline
 ```
 
-Los analyzers de Auth, Secrets y Test Quality se estan implementando y estaran disponibles en versiones futuras.
+El analyzer de Test Quality se implementara en la siguiente fase.
 
 ## Siguientes pasos
 

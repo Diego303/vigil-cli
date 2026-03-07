@@ -29,6 +29,18 @@ vigil-cli/
         parsers.py                # Parsers para requirements.txt, pyproject.toml, package.json
         registry_client.py        # Cliente HTTP para PyPI/npm con cache local
         similarity.py             # Levenshtein + corpus de paquetes populares
+      auth/                       # CAT-02: Auth Analyzer
+        __init__.py
+        analyzer.py               # AuthAnalyzer (AUTH-001..007)
+        endpoint_detector.py      # Deteccion de endpoints HTTP (FastAPI/Flask/Express)
+        middleware_checker.py     # Verificacion de auth middleware
+        patterns.py               # Regex para JWT, CORS, cookies, passwords
+      secrets/                    # CAT-03: Secrets Analyzer
+        __init__.py
+        analyzer.py               # SecretsAnalyzer (SEC-001..006)
+        placeholder_detector.py   # Deteccion de placeholders y assignments
+        entropy.py                # Calculo de Shannon entropy
+        env_tracer.py             # Tracing de valores desde .env.example
     reports/
       __init__.py
       formatter.py                # BaseFormatter Protocol + factory
@@ -66,6 +78,18 @@ vigil-cli/
         test_analyzer.py          # Tests del DependencyAnalyzer
         test_analyzer_qa.py       # QA: false positives/negatives, boundaries
         test_integration_qa.py    # QA: engine+analyzer, CLI+deps, regression
+      test_auth/
+        test_analyzer.py          # Tests del AuthAnalyzer
+        test_endpoint_detector.py # Tests de deteccion de endpoints
+        test_middleware_checker.py # Tests de verificacion de auth middleware
+        test_patterns.py          # Tests de patrones regex (JWT, CORS, cookies)
+        test_qa_regression.py     # QA: edge cases y regresiones
+      test_secrets/
+        test_analyzer.py          # Tests del SecretsAnalyzer
+        test_placeholder_detector.py # Tests de deteccion de placeholders
+        test_entropy.py           # Tests de calculo de Shannon entropy
+        test_env_tracer.py        # Tests de tracing de .env.example
+        test_qa_regression.py     # QA: edge cases y regresiones
     fixtures/                     # Archivos de prueba
       deps/                       # Fixtures de dependencias
         valid_project/            #   Proyecto con deps legitimas
@@ -74,6 +98,18 @@ vigil-cli/
         clean_project/            #   Proyecto limpio (sin findings)
         vulnerable_project/       #   Mix de deps legitimas y sospechosas
         edge_cases/               #   Empty, comments-only, markers, URLs, malformed
+      auth/                       # Fixtures de auth
+        insecure_fastapi.py       #   FastAPI sin auth middleware
+        insecure_flask.py         #   Flask sin auth
+        insecure_express.js       #   Express sin auth
+        secure_app.py             #   App con auth correcta (sin findings)
+        edge_cases.py             #   Casos borde
+      secrets/                    # Fixtures de secrets
+        insecure_secrets.py       #   Secrets hardcodeados (Python)
+        insecure_secrets.js       #   Secrets hardcodeados (JavaScript)
+        .env.example              #   Ejemplo de .env.example
+        copies_env_example.py     #   Codigo que copia valores de .env.example
+        secure_code.py            #   Codigo seguro (sin findings)
 ```
 
 ---
@@ -269,7 +305,12 @@ En `cli.py`, los analyzers se registran mediante `_register_analyzers(engine)` a
 ```python
 def _register_analyzers(engine: ScanEngine) -> None:
     from vigil.analyzers.deps import DependencyAnalyzer
+    from vigil.analyzers.auth import AuthAnalyzer
+    from vigil.analyzers.secrets import SecretsAnalyzer
+
     engine.register_analyzer(DependencyAnalyzer())
+    engine.register_analyzer(AuthAnalyzer())
+    engine.register_analyzer(SecretsAnalyzer())
 ```
 
 Esta funcion se invoca en los comandos `scan`, `deps` y `tests`.

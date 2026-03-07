@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-03-07
+
+### Added
+
+- **Auth Analyzer (FASE 2)** — full implementation of CAT-02 rules for FastAPI, Flask, and Express
+  - **AUTH-001** (HIGH): Detects sensitive endpoints (e.g., `/admin`, `/users`) without authentication middleware
+  - **AUTH-002** (HIGH): Detects mutating endpoints (DELETE/PUT/PATCH/POST) without authorization
+  - **AUTH-003** (MEDIUM): Flags JWT tokens with lifetime exceeding configurable threshold (default 24h)
+  - **AUTH-004** (CRITICAL): Detects hardcoded JWT/auth secrets with low entropy (placeholder values)
+  - **AUTH-005** (HIGH): Detects CORS configured with `*` (allow all origins) across FastAPI, Flask, and Express
+  - **AUTH-006** (MEDIUM): Detects cookies missing security flags (httpOnly, secure, sameSite)
+  - **AUTH-007** (MEDIUM): Detects password comparisons without timing-safe functions
+- **Secrets Analyzer (FASE 2)** — full implementation of CAT-03 rules
+  - **SEC-001** (CRITICAL): Detects placeholder secrets copied from docs or `.env.example` (e.g., `changeme`, `your-api-key-here`)
+  - **SEC-002** (CRITICAL): Detects hardcoded secrets with low Shannon entropy (likely AI-generated weak values)
+  - **SEC-003** (CRITICAL): Detects connection strings with embedded credentials (PostgreSQL, MongoDB, Redis, AMQP, etc.)
+  - **SEC-004** (HIGH): Detects sensitive environment variables with hardcoded default values
+  - **SEC-006** (CRITICAL): Detects values copied verbatim from `.env.example` into source code
+- **Endpoint detector** (`src/vigil/analyzers/auth/endpoint_detector.py`)
+  - FastAPI decorator patterns (`@app.get`, `@router.post`, etc.)
+  - Flask route patterns (`@app.route` with methods, `@bp.get`)
+  - Express patterns (`app.get`, `router.post`, etc.)
+  - Auth middleware detection: `Depends(get_current_user)`, `@login_required`, `passport.authenticate`, etc.
+- **Auth patterns** (`src/vigil/analyzers/auth/patterns.py`)
+  - JWT lifetime extraction for Python (`timedelta`) and JavaScript (`expiresIn`)
+  - Hardcoded secret detection with environment variable reference filtering
+  - CORS allow-all detection across three frameworks
+  - Cookie security flag verification (secure, httpOnly, sameSite)
+  - Password timing-safe comparison detection
+- **Middleware checker** (`src/vigil/analyzers/auth/middleware_checker.py`)
+  - Sensitive path detection (13 patterns: `/admin`, `/users`, `/billing`, etc.)
+  - Framework-specific auth suggestions in findings
+- **Placeholder detector** (`src/vigil/analyzers/secrets/placeholder_detector.py`)
+  - 30 regex patterns for common AI-generated placeholder values
+  - Secret assignment detection across Python and JavaScript syntax
+- **Shannon entropy calculator** (`src/vigil/analyzers/secrets/entropy.py`)
+  - Distinguishes placeholder/weak secrets from real hardcoded secrets
+- **Env example tracer** (`src/vigil/analyzers/secrets/env_tracer.py`)
+  - Parses `.env.example`, `.env.sample`, `.env.template`, `.env.defaults`
+  - Traces copied values into source code with line-level precision
+  - Filters out generic values (true/false, ports, environments)
+- **Analyzer registration** — `AuthAnalyzer` and `SecretsAnalyzer` wired into CLI via `_register_analyzers()`
+- **329 tests for FASE 2** (961 total) covering analyzers, patterns, endpoint detection, middleware checking, placeholder detection, entropy, env tracing, and 137 QA regression tests
+- **Test fixtures** in `tests/fixtures/auth/` and `tests/fixtures/secrets/` with insecure FastAPI/Flask/Express apps, secure apps, edge cases, and `.env.example` tracing scenarios
+- **Configuration** — `AuthConfig` (max_token_lifetime_hours, require_auth_on_mutating, cors_allow_localhost) and `SecretsConfig` (min_entropy, check_env_example, placeholder_patterns) fully functional
+
+### Fixed
+
+- **SEC-006 leaked secret values** — Finding message and metadata no longer include the actual secret value from `.env.example`; only the key name and source file are shown
+- **Express auth middleware false positives** — `_EXPRESS_AUTH_MIDDLEWARE` regex now uses `\b` word boundaries, preventing matches on substrings like `auth_header` or `authorization`
+- **CORS dev-path heuristic over-matching** — `cors_allow_localhost` suppression now matches path segments instead of substrings; `production_cors.py` is no longer falsely suppressed
+- **Placeholder pattern recompilation** — `is_placeholder_value()` now uses cached compiled patterns instead of recompiling 30+ regexes on every call (41x performance improvement)
+- **Config/default pattern mismatch** — `SecretsConfig.placeholder_patterns` synced with `DEFAULT_PLACEHOLDER_PATTERNS` (was 12 patterns, now 30)
+- **Dead code removed** — `AuthPattern` dataclass and `_FLASK_METHOD_SHORTCUT` regex were defined but never used
+- **`auth_config` typing** — `_check_lines` and `_check_cors` parameters typed as `AuthConfig` instead of `object`
+- **`import re` in method body** — moved to module-level import in `auth/analyzer.py`
+
 ## [0.2.0] — 2026-03-06
 
 ### Added

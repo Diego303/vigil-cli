@@ -11,17 +11,17 @@
 |------|--------|--------|-------|
 | FASE 0 | Scaffolding + Config + Core | COMPLETADA (QA done) | 350 |
 | FASE 1 | Dependency Analyzer | COMPLETADA (QA done) | 282 |
-| FASE 2 | Auth & Secrets Analyzers | Pendiente | — |
+| FASE 2 | Auth & Secrets Analyzers | COMPLETADA (QA done) | 329 |
 | FASE 3 | Test Quality Analyzer | Pendiente | — |
 | FASE 4 | Reports + Formatters | Pendiente | — |
 | FASE 5 | Integration + Testing + Docs | Pendiente | — |
 | FASE 6 | Data + Polish | Pendiente | — |
 
 **Metricas actuales:**
-- Tests totales: 632 (todos pasando, 0 warnings)
-- Cobertura: ~94%
-- Archivos fuente: 27
-- Archivos de test: 28
+- Tests totales: 961 (todos pasando, 0 warnings)
+- Cobertura FASE 2: 98% (540 statements, 9 missed)
+- Archivos fuente: 35
+- Archivos de test: 36
 
 ---
 
@@ -543,11 +543,201 @@ Se refactorizaron `test_cli.py` y `test_cli_edge_cases.py` para que todos los te
 
 ## FASE 2 — Auth & Secrets Analyzers
 
-**Estado: Pendiente**
+**Objetivo:** Implementar los analyzers de auth patterns (AUTH-001 a AUTH-007) y secrets (SEC-001 a SEC-006) con deteccion regex para Python (FastAPI/Flask) y JavaScript (Express).
 
-Pendiente de implementar:
-- F2.1 — AuthAnalyzer (FastAPI, Flask, Express patterns via regex)
-- F2.2 — SecretsAnalyzer (placeholders, entropy, env tracer, connection strings)
+**Estado: COMPLETADA**
+
+### F2.1 — AuthAnalyzer
+
+**Archivos:**
+- `src/vigil/analyzers/auth/__init__.py` — Package init, exporta AuthAnalyzer
+- `src/vigil/analyzers/auth/analyzer.py` — AuthAnalyzer orquestador
+- `src/vigil/analyzers/auth/patterns.py` — Regex patterns compilados
+- `src/vigil/analyzers/auth/endpoint_detector.py` — Deteccion de endpoints HTTP
+- `src/vigil/analyzers/auth/middleware_checker.py` — Verificacion de auth en endpoints
+
+**AuthAnalyzer** — implementa `BaseAnalyzer` Protocol:
+- `name = "auth"`, `category = Category.AUTH`
+- `analyze(files, config)` — itera archivos relevantes (.py, .js, .jsx, .ts, .tsx, .mjs, .cjs), detecta endpoints y ejecuta checks linea por linea
+- Reglas implementadas:
+  - **AUTH-001** (HIGH) — Endpoint con path sensible sin auth (GET /admin, /users, /billing, etc.)
+  - **AUTH-002** (HIGH) — Endpoint mutante (POST/PUT/DELETE/PATCH) sin auth
+  - **AUTH-003** (MEDIUM) — JWT con lifetime excesivo (>24h por defecto, configurable)
+  - **AUTH-004** (CRITICAL) — JWT/auth secret hardcodeado con baja entropy (<4.0 bits/char)
+  - **AUTH-005** (HIGH) — CORS configurado con `*` (FastAPI, Flask, Express)
+  - **AUTH-006** (MEDIUM) — Cookie sin flags de seguridad (httpOnly, secure, sameSite)
+  - **AUTH-007** (MEDIUM) — Comparacion de passwords sin timing-safe function
+
+**Endpoint detector:**
+- `DetectedEndpoint` dataclass — file, line, method, path, framework, snippet, has_auth
+- FastAPI: `@app.get("/path")`, `@router.post("/path")` con context scan para `Depends(get_current_user)`, `Security()`
+- Flask: `@app.route("/path", methods=["GET"])` con scan para `@login_required`, `@auth_required`, etc.
+- Express: `app.get('/path', handler)` con inline scan para auth middleware names
+- Soporte para `window` de contexto configurable (lineas antes/despues del decorator)
+
+**Middleware checker:**
+- `SENSITIVE_PATH_PATTERNS` — 13 patrones: /admin, /user, /users, /account, /profile, /settings, /billing, /payment, /order, /api/v, /private, /internal, /dashboard
+- `check_endpoint_auth()` — retorna AUTH-001 o AUTH-002 segun el tipo de endpoint
+- Sugerencias framework-specific en cada finding
+
+**Patterns:**
+- JWT lifetime: `_JWT_TIMEDELTA_HOURS` (Python timedelta), `_JWT_EXPIRES_IN_JS` (expiresIn con unidades), `_JWT_EXPIRES_IN_SECONDS` (expiresIn numerico)
+- Hardcoded secrets: `_HARDCODED_SECRET_PY` / `_HARDCODED_SECRET_JS` con filtrado de env references
+- CORS: `_CORS_FASTAPI` / `_CORS_FLASK` / `_CORS_EXPRESS_STAR` / `_CORS_EXPRESS_DEFAULT`
+- Cookies: `_COOKIE_SECURE_FLAG` / `_COOKIE_HTTPONLY_FLAG` / `_COOKIE_SAMESITE_FLAG`
+- Password: `_PW_COMPARE_PY` / `_PW_COMPARE_JS` / `_TIMING_SAFE`
+
+**Configuracion:** `AuthConfig` con:
+- `max_token_lifetime_hours` (default 24) — threshold para AUTH-003
+- `require_auth_on_mutating` (default True) — habilita/deshabilita AUTH-002
+- `cors_allow_localhost` (default True) — suprime AUTH-005 en archivos dev/test/local/example
+
+**Tests:** 132 tests (66 originales + 66 QA)
+
+| Archivo | Tests |
+|---------|-------|
+| `test_auth/test_analyzer.py` | 26 |
+| `test_auth/test_endpoint_detector.py` | 21 |
+| `test_auth/test_middleware_checker.py` | 13 |
+| `test_auth/test_patterns.py` | 30 |
+| `test_auth/test_qa_regression.py` | 66 |
+
+### F2.2 — SecretsAnalyzer
+
+**Archivos:**
+- `src/vigil/analyzers/secrets/__init__.py` — Package init, exporta SecretsAnalyzer
+- `src/vigil/analyzers/secrets/analyzer.py` — SecretsAnalyzer orquestador
+- `src/vigil/analyzers/secrets/placeholder_detector.py` — Deteccion de valores placeholder
+- `src/vigil/analyzers/secrets/entropy.py` — Calculo de entropy de Shannon
+- `src/vigil/analyzers/secrets/env_tracer.py` — Trazado de valores de .env.example
+
+**SecretsAnalyzer** — implementa `BaseAnalyzer` Protocol:
+- `name = "secrets"`, `category = Category.SECRETS`
+- `analyze(files, config)` — carga env examples, itera archivos, ejecuta checks SEC-001 a SEC-006
+- Reglas implementadas:
+  - **SEC-001** (CRITICAL) — Valor placeholder (changeme, your-api-key-here, TODO, etc.) en asignacion de secret
+  - **SEC-002** (CRITICAL) — Secret hardcodeado con baja entropy (< min_entropy configurable)
+  - **SEC-003** (CRITICAL) — Connection string con credenciales embebidas (postgresql, mongodb, redis, amqp, etc.)
+  - **SEC-004** (HIGH) — Variable de entorno sensible con valor default hardcodeado
+  - **SEC-006** (CRITICAL) — Valor copiado textualmente de .env.example al codigo
+- **SEC-005** diferido — requiere parsing de .gitignore, fuera de scope V0
+
+**Placeholder detector:**
+- `DEFAULT_PLACEHOLDER_PATTERNS` — 30 regex patterns (changeme, your-*-here, TODO, FIXME, xxx+, sk-your, pk_test, secret123, etc.)
+- `_COMPILED_DEFAULT_PATTERNS` — cache compilado a nivel de modulo (evita recompilacion)
+- `_SECRET_ASSIGNMENT_PATTERNS` — 3 regex para deteccion de asignaciones (Python, JS const/let/var, object properties)
+- `is_placeholder_value()` — verifica si un valor matchea algun patron
+- `find_secret_assignments()` — encuentra valores de secrets asignados en una linea
+
+**Entropy:**
+- `shannon_entropy()` — bits por caracter usando Counter + log2
+- `is_high_entropy_secret()` — len >= 8 y entropy >= threshold
+- `is_low_entropy_secret()` — len >= 3 y entropy < threshold
+
+**Env tracer:**
+- `ENV_EXAMPLE_FILES` — 6 nombres: .env.example, .env.sample, .env.template, .env.defaults, env.example, env.sample
+- `_GENERIC_VALUES` — set de valores demasiado genericos para trazar (true, false, ports, environments)
+- `parse_env_example()` — parsea KEY=value, quita comillas, ignora genericos y variable references
+- `find_env_values_in_code()` — busca valores exactos en strings del codigo, min longitud 5
+
+**Connection strings:**
+- `_CONNECTION_STRING_PATTERNS` — 3 regex: postgresql/mysql/mongodb/redis/amqp, mongodb+srv, sqlserver/mssql
+- Password redaction en snippets via `_redact_password()` (seguridad del propio vigil)
+
+**Configuracion:** `SecretsConfig` con:
+- `min_entropy` (default 3.0) — threshold para SEC-002
+- `check_env_example` (default True) — habilita/deshabilita SEC-006
+- `placeholder_patterns` (30 patterns) — patrones de placeholder customizables
+
+**Tests:** 197 tests (126 originales + 71 QA)
+
+| Archivo | Tests |
+|---------|-------|
+| `test_secrets/test_analyzer.py` | 32 |
+| `test_secrets/test_entropy.py` | 17 |
+| `test_secrets/test_env_tracer.py` | 21 |
+| `test_secrets/test_placeholder_detector.py` | 25 |
+| `test_secrets/test_qa_regression.py` | 71 |
+
+### F2.3 — Wiring al CLI
+
+**Archivo modificado:** `src/vigil/cli.py`
+
+- `_register_analyzers()` actualizado para registrar `AuthAnalyzer` y `SecretsAnalyzer` ademas de `DependencyAnalyzer`
+- Los tres analyzers se ejecutan en `vigil scan` por defecto
+- Filtrado por `--category auth` o `--category secrets` funciona correctamente
+
+### F2.Fixtures — Test fixtures
+
+**Archivos creados:**
+
+`tests/fixtures/auth/`:
+- `insecure_fastapi.py` — FastAPI con CORS *, hardcoded secret, JWT 72h, DELETE sin auth, path sensible
+- `insecure_flask.py` — Flask con CORS *, hardcoded secret, DELETE sin auth, cookie insegura, password comparison
+- `insecure_express.js` — Express con cors() default, hardcoded secret, DELETE sin auth, JWT 72h, cookie insegura
+- `secure_app.py` — FastAPI segura: env vars, CORS especifico, JWT 1h, auth en endpoints
+- `edge_cases.py` — JWT con days, threshold exacto, timing-safe, cookie parcial
+
+`tests/fixtures/secrets/`:
+- `insecure_secrets.py` — Placeholders, low-entropy, connection strings, env defaults
+- `insecure_secrets.js` — Version JavaScript de lo anterior
+- `.env.example` — Archivo de ejemplo con placeholders
+- `copies_env_example.py` — Codigo que copia valores de .env.example
+- `secure_code.py` — Uso correcto de env vars, sin hardcoded secrets
+
+### F2.QA — Auditoria de calidad y tests adicionales
+
+**Estado: COMPLETADA**
+
+Se realizo una auditoria exhaustiva del codigo de FASE 2. Se encontraron 15 hallazgos (6 bugs, 4 robustez, 2 consistencia, 3 seguridad) y se corrigieron 9.
+
+**Bugs corregidos:**
+
+1. **`auth/analyzer.py:88,225`** — `auth_config` tipado como `object` en vez de `AuthConfig`. Corregido a `AuthConfig` para type safety.
+2. **`auth/analyzer.py:272`** — `import re` dentro del cuerpo de `_check_cookie()`. Movido a import a nivel de modulo.
+3. **`secrets/analyzer.py:167-189`** — SEC-006 exponia el valor del secret en el mensaje y metadata del finding. Redactado: solo se muestra el key name y archivo fuente.
+4. **`endpoint_detector.py:87`** — `_EXPRESS_AUTH_MIDDLEWARE` regex matcheaba substrings como `auth_header`. Agregados word boundaries `\b`.
+5. **`placeholder_detector.py:94-95`** — `is_placeholder_value()` recompilaba todos los patterns en cada llamada sin cache (41x mas lento). Creado `_COMPILED_DEFAULT_PATTERNS` cache a nivel de modulo.
+6. **`config/schema.py`** — `SecretsConfig.placeholder_patterns` tenia 12 patterns vs 30 en `DEFAULT_PLACEHOLDER_PATTERNS`. Sincronizados.
+
+**Codigo muerto eliminado:**
+- `patterns.py:13` — `AuthPattern` dataclass definido pero nunca usado
+- `endpoint_detector.py:45-48` — `_FLASK_METHOD_SHORTCUT` regex definido pero nunca usado
+- `secrets/analyzer.py:298-301` — Condicional confuso con `pass` que no tenia efecto
+
+**Issues documentados (no corregidos, para fases futuras):**
+- `middleware_checker.py:75` — POST a path sensible reporta AUTH-002 pero no menciona que es un path sensible
+- Ambos analyzers duplican `_is_relevant_file`, `_is_comment`, `_read_file_safe` — refactor DRY para FASE 3+
+- `_is_comment()` no detecta block comments (`/* */`, `"""`) — limitacion conocida V0
+- AUTH-004 y SEC-001 snippets exponen el valor del secret (bajo riesgo para placeholders)
+
+**Tests nuevos: 137 tests en 2 archivos:**
+
+| Archivo | Tests | Cobertura |
+|---------|-------|-----------|
+| `test_auth/test_qa_regression.py` | 66 | Word boundary regression, config typing, CORS path heuristic, false positives/negatives, edge cases, helpers, middleware, patterns, finding quality |
+| `test_secrets/test_qa_regression.py` | 71 | SEC-006 no-leakage regression, pattern caching, config sync, false positives/negatives, configuration, edge cases, helpers, entropy, env tracer, finding quality, placeholder detector |
+
+**Cobertura por modulo post-QA:**
+
+| Modulo | Stmts | Miss | Cobertura |
+|--------|-------|------|-----------|
+| `analyzers/auth/__init__.py` | 2 | 0 | 100% |
+| `analyzers/auth/analyzer.py` | 117 | 3 | 97% |
+| `analyzers/auth/endpoint_detector.py` | 83 | 1 | 99% |
+| `analyzers/auth/middleware_checker.py` | 20 | 0 | 100% |
+| `analyzers/auth/patterns.py` | 83 | 2 | 98% |
+| `analyzers/secrets/__init__.py` | 2 | 0 | 100% |
+| `analyzers/secrets/analyzer.py` | 124 | 3 | 98% |
+| `analyzers/secrets/entropy.py` | 21 | 0 | 100% |
+| `analyzers/secrets/env_tracer.py` | 61 | 0 | 100% |
+| `analyzers/secrets/placeholder_detector.py` | 27 | 0 | 100% |
+| **Total FASE 2** | **540** | **9** | **98%** |
+
+**Totales post-QA FASE 2:**
+- Tests FASE 2: 329 (192 originales + 137 QA)
+- Tests totales proyecto: 961
+- Cobertura FASE 2: 98%
 
 ---
 
