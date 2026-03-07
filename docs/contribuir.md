@@ -53,6 +53,7 @@ src/vigil/
     deps/             #   DependencyAnalyzer (parsers, registry, similarity)
     auth/             #   AuthAnalyzer (endpoints, middleware, patterns)
     secrets/          #   SecretsAnalyzer (placeholders, entropy, env tracing)
+    tests/            #   TestQualityAnalyzer (assertions, mocks, coverage heuristics)
   reports/            # Formateadores de salida
   logging/            # Setup de structlog
 tests/
@@ -64,10 +65,12 @@ tests/
     test_deps/        #   Tests del DependencyAnalyzer
     test_auth/        #   Tests del AuthAnalyzer
     test_secrets/     #   Tests del SecretsAnalyzer
+    test_tests/       #   Tests del TestQualityAnalyzer
   fixtures/           # Archivos de prueba
     deps/             #   Fixtures de dependencias
     auth/             #   Fixtures de auth
     secrets/          #   Fixtures de secrets
+    tests/            #   Fixtures de test quality
 docs/                 # Documentacion
 ```
 
@@ -198,10 +201,12 @@ En `cli.py`, agregar el analyzer a `_register_analyzers()`:
 ```python
 def _register_analyzers(engine: ScanEngine) -> None:
     from vigil.analyzers.deps import DependencyAnalyzer
-    from vigil.analyzers.secrets import SecretsAnalyzer  # nuevo
+    from vigil.analyzers.secrets import SecretsAnalyzer
+    from vigil.analyzers.tests import TestQualityAnalyzer
 
     engine.register_analyzer(DependencyAnalyzer())
-    engine.register_analyzer(SecretsAnalyzer())           # nuevo
+    engine.register_analyzer(SecretsAnalyzer())
+    engine.register_analyzer(TestQualityAnalyzer())
 ```
 
 ### Paso 4: Escribir tests
@@ -325,11 +330,13 @@ pytest -v
 | Analyzers (deps) QA | 126 |
 | Analyzers (auth) | ~130 |
 | Analyzers (secrets) | ~130 |
+| Analyzers (test-quality) | ~128 |
+| Analyzers (test-quality) QA | 81 |
 | Integration | 14 |
 | Integration QA (deps) | 13 |
 | Integration (auth+secrets) | ~70 |
 | Logging | 3 |
-| **Total** | **~961** |
+| **Total** | **~1170** |
 
 Cobertura global: **~98%**
 
@@ -377,7 +384,7 @@ vigil se desarrolla en fases incrementales:
 | **FASE 0** | Scaffolding, config, engine, CLI, formatters, rule catalog | Completada (QA done) |
 | **FASE 1** | Dependency analyzer (DEP-001, 002, 003, 005, 007) | Completada (QA done) |
 | **FASE 2** | Auth + Secrets analyzers (AUTH-001..007, SEC-001..006) | Completada (QA done) |
-| **FASE 3** | Test quality analyzer (TEST-001..006) | Pendiente |
+| **FASE 3** | Test quality analyzer (TEST-001..006) | Completada (QA done) |
 | **FASE 4** | Reports polish | Pendiente |
 | **FASE 5** | Integracion, fixtures realistas, docs | Pendiente |
 | **FASE 6** | Popular packages corpus, polish final | Pendiente |

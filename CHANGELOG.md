@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-03-07
+
+### Added
+
+- **Test Quality Analyzer (FASE 3)** — full implementation of CAT-06 rules for pytest (Python) and jest/mocha (JavaScript/TypeScript)
+  - **TEST-001** (HIGH): Detects test functions without any assertions — tests that only verify code doesn't crash
+  - **TEST-002** (MEDIUM): Detects trivial assertions (`assert True`, `assert x is not None`, `assertTrue(True)`, `toBeTruthy()`, `toBeDefined()`) — reports only when ALL assertions in a test are trivial
+  - **TEST-003** (MEDIUM): Detects catch-all exception handlers (`except Exception: pass`, `except BaseException: pass`, bare `except:`, JS `catch(e)`) that silently swallow errors in tests
+  - **TEST-004** (LOW): Detects tests marked as skip without justification (`@pytest.mark.skip`, `@unittest.skip`, `test.skip()`, `xit()`, `xtest()`)
+  - **TEST-005** (MEDIUM): Detects API tests (`client.get/post`, `fetch()`, `supertest()`) that don't verify the response status code
+  - **TEST-006** (MEDIUM): Detects mock mirrors — tests where the mock return value is the same literal asserted, proving only that the mock works, not the implementation
+- **Assert checker** (`src/vigil/analyzers/tests/assert_checker.py`)
+  - Python test function extraction via indentation-based heuristics (supports `def test_*`, `async def test_*`, class methods, single-line tests)
+  - JavaScript test block extraction via brace counting (`test()`, `it()`)
+  - Assertion counting for both Python (`assert`, `assertEqual`, `pytest.raises/warns/approx`) and JavaScript (`expect`, `assert`, `.should`, `.to`)
+  - Trivial assertion detection with 10 Python patterns and 5 JavaScript patterns
+  - Catch-all exception detection with re-raise verification
+  - Skip detection for pytest, unittest, jest, and mocha
+  - API test detection and status code assertion verification
+- **Mock checker** (`src/vigil/analyzers/tests/mock_checker.py`)
+  - Mock return value extraction for Python (`mock.return_value = ...`, `@mock.patch(return_value=...)`) and JavaScript (`jest.fn().mockReturnValue()`, `.mockResolvedValue()`)
+  - Assert value extraction for Python (`assert x == literal`, `assertEqual(x, literal)`) and JavaScript (`expect(x).toBe(literal)`, `.toEqual(literal)`)
+  - Mock mirror detection: matches mock return values against asserted literals
+  - Literal value validation and normalization (numbers, strings, booleans, None/null)
+- **Coverage heuristics** (`src/vigil/analyzers/tests/coverage_heuristics.py`)
+  - Test file identification: `test_*.py`, `*_test.py`, `*.test.js`, `*.spec.ts` (and variants)
+  - Test directory membership: `tests/`, `test/`, `__tests__/`, `spec/`, `specs/`
+  - Test framework detection: pytest, unittest, jest, mocha
+- **Analyzer registration** — `TestQualityAnalyzer` wired into CLI via `_register_analyzers()`
+- **209 tests for FASE 3** (1170 total) covering analyzer, assert checker, mock checker, coverage heuristics, and 81 QA regression tests
+- **Test fixtures** in `tests/fixtures/tests/` — `empty_tests_python.py`, `empty_tests_js.js`, `secure_tests_python.py`, `edge_cases_python.py`, `edge_cases_js.js`, `npm_tests.test.js`
+- **Configuration** — `TestQualityConfig` with `min_assertions_per_test`, `detect_trivial_asserts`, `detect_mock_mirrors`
+
+### Fixed
+
+- **Async test functions not detected** — `_PYTHON_TEST_FUNC` regex now matches `async def test_*` in addition to `def test_*`
+- **Single-line test assertions not counted** — `def test_x(): assert True` now correctly counts the assertion (inline body detection)
+- **`except BaseException` not detected as catch-all** — `_PYTHON_CATCH_ALL` regex now matches `BaseException` in addition to `Exception`
+- **Mismatched quote literals accepted** — `_is_literal("'hello\"")` no longer returns `True`; quote patterns now require matching open/close quotes
+- **`import re` in function body** — moved to module-level import in `analyzer.py`
+- **JS status assertion regex incomplete** — `_JS_STATUS_ASSERT` now matches `toHaveProperty('status', ...)` pattern
+- **CLI test fixtures updated** — `TestTestsCommand` tests now use proper assertions instead of `assert True` to avoid triggering TEST-002 with the new analyzer active
+
 ## [0.3.0] — 2026-03-07
 
 ### Added

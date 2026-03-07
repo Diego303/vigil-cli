@@ -38,7 +38,7 @@ El CRA exige que los productos con componentes digitales sean seguros "by design
 | Gestion de vulnerabilidades en componentes de terceros | DEP-001 a DEP-007 verifican que las dependencias existen, son legitimas y no son typosquatting |
 | Proteccion de datos almacenados y en transito | SEC-001 a SEC-006 detectan credenciales hardcodeadas que comprometen datos |
 | Control de acceso adecuado | AUTH-001 a AUTH-007 detectan endpoints sin autenticacion y configuraciones permisivas |
-| Testing adecuado | TEST-001 a TEST-006 (cuando se implemente) detectaran tests que no verifican nada |
+| Testing adecuado | TEST-001 a TEST-006 detectan tests que no verifican nada (desde v0.4.0) |
 
 ### SOC 2 Type II
 

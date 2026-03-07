@@ -12,16 +12,16 @@
 | FASE 0 | Scaffolding + Config + Core | COMPLETADA (QA done) | 350 |
 | FASE 1 | Dependency Analyzer | COMPLETADA (QA done) | 282 |
 | FASE 2 | Auth & Secrets Analyzers | COMPLETADA (QA done) | 329 |
-| FASE 3 | Test Quality Analyzer | Pendiente | — |
+| FASE 3 | Test Quality Analyzer | COMPLETADA (QA done) | 209 |
 | FASE 4 | Reports + Formatters | Pendiente | — |
 | FASE 5 | Integration + Testing + Docs | Pendiente | — |
 | FASE 6 | Data + Polish | Pendiente | — |
 
 **Metricas actuales:**
-- Tests totales: 961 (todos pasando, 0 warnings)
-- Cobertura FASE 2: 98% (540 statements, 9 missed)
-- Archivos fuente: 35
-- Archivos de test: 36
+- Tests totales: 1170 (todos pasando, 0 warnings)
+- Cobertura FASE 3: 98% (349 statements, 7 missed)
+- Archivos fuente: 39
+- Archivos de test: 41
 
 ---
 
@@ -743,11 +743,171 @@ Se realizo una auditoria exhaustiva del codigo de FASE 2. Se encontraron 15 hall
 
 ## FASE 3 — Test Quality Analyzer
 
-**Estado: Pendiente**
+**Objetivo:** Implementar el analyzer de calidad de tests que detecta test theater: tests que pasan pero no verifican nada real. Soporta pytest (Python) y jest/mocha (JavaScript/TypeScript).
 
-Pendiente de implementar:
-- F3.1 — TestQualityAnalyzer (pytest, jest/mocha)
-- F3.2 — Assert checker, mock mirror detection
+**Estado: COMPLETADA**
+
+### F3.1 — Coverage heuristics
+
+**Archivo:** `src/vigil/analyzers/tests/coverage_heuristics.py`
+
+- `is_test_file()` — detecta archivos de test por nombre (`test_*.py`, `*_test.py`, `*.test.js`, `*.spec.ts`) y directorio (`tests/`, `__tests__/`, `spec/`)
+- `is_python_test_file()` / `is_js_test_file()` — filtros especificos por lenguaje
+- `detect_test_framework()` — identifica pytest, unittest, jest o mocha por imports y patrones
+- Soporte para extensiones `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`, `.cjs`
+- Normalizacion de paths Windows (backslash a forward slash)
+
+**Tests:** 20 tests en `test_analyzers/test_tests/test_coverage_heuristics.py`
+
+### F3.2 — Assert checker
+
+**Archivo:** `src/vigil/analyzers/tests/assert_checker.py`
+
+**Extraccion de funciones de test:**
+- `extract_python_test_functions()` — extrae `def test_*` y `async def test_*` con heuristica de indentacion, soporta funciones single-line (`def test_x(): assert True`)
+- `extract_js_test_functions()` — extrae bloques `test()/it()` con conteo de llaves para determinar fin del bloque
+- Retorna tuplas `(nombre, linea_inicio, linea_fin)` para cada funcion
+
+**Conteo de assertions:**
+- `count_assertions()` — cuenta assertions en Python (assert, assertEqual, pytest.raises/warns/approx, .should) y JavaScript (expect, assert, .should, .to, .toBe, .toEqual, .toThrow, .rejects, .resolves)
+- Ignora lineas de comentario (`#` en Python, `//` en JavaScript)
+
+**Deteccion de patrones:**
+- `find_trivial_assertions()` — 10 patrones Python (assert True, assert x, assert x is not None, assertTrue(True), assertIsNotNone, assertIsNone) + 5 patrones JavaScript (toBeTruthy, toBeDefined, not.toBeNull, not.toBeUndefined, toBe(true))
+- `find_catch_all_exceptions()` — except Exception/BaseException/bare except con pass (verifica re-raise), JS catch(e)
+- `find_skips_without_reason()` — @pytest.mark.skip, @unittest.skip (sin reason), test.skip/it.skip/xit/xtest
+- `is_api_test()` — detecta llamadas client.get/post, fetch(), supertest(), axios
+- `has_status_code_assertion()` — verifica assertions sobre status_code/.status/.code
+
+**Tests:** 46 tests en `test_analyzers/test_tests/test_assert_checker.py`
+
+### F3.3 — Mock checker
+
+**Archivo:** `src/vigil/analyzers/tests/mock_checker.py`
+
+- `find_mock_return_values()` — detecta `mock.return_value = <literal>`, `@mock.patch(return_value=...)`, `jest.fn().mockReturnValue()`, `.mockResolvedValue()`
+- `find_assert_values()` — detecta `assert result == <literal>`, `assertEqual(result, <literal>)`, `expect(result).toBe(<literal>)`
+- `find_mock_mirrors()` — cruza valores de mock con valores de assert para detectar mirrors
+- `_is_literal()` — valida numeros, strings (con quotes correctos), booleans, None/null, containers vacios
+- `_normalize_value()` — normaliza para comparacion: quita comillas, unifica True/true, None/null/undefined
+
+**Decision:** Solo se detectan literals simples como valores de mock. Valores complejos (funciones, listas, dicts) se ignoran para evitar falsos positivos.
+
+**Tests:** 18 tests en `test_analyzers/test_tests/test_mock_checker.py`
+
+### F3.4 — TestQualityAnalyzer
+
+**Archivo:** `src/vigil/analyzers/tests/analyzer.py`
+
+- `TestQualityAnalyzer` — implementa `BaseAnalyzer` Protocol
+  - `name = "test-quality"`, `category = Category.TEST_QUALITY`
+  - `__test__ = False` — previene que pytest recolecte la clase como test
+  - `analyze(files, config)` — itera archivos de test, extrae funciones, aplica reglas
+
+**Reglas implementadas:**
+- **TEST-001** (HIGH) — Test sin assertions (o con menos de `min_assertions_per_test`)
+- **TEST-002** (MEDIUM) — Todas las assertions son triviales (solo reporta si 100% triviales)
+- **TEST-003** (MEDIUM) — Catch-all exceptions (except Exception/BaseException + pass)
+- **TEST-004** (LOW) — Skip sin justificacion (analisis global por archivo)
+- **TEST-005** (MEDIUM) — Test de API sin verificacion de status code
+- **TEST-006** (MEDIUM) — Mock mirror (mock retorna literal que coincide con assert)
+
+**Flujo:**
+1. Filtrar archivos de test (Python o JS/TS)
+2. Leer contenido con `_read_file_safe()` (tolerante a encoding)
+3. Detectar skips sin razon (TEST-004, global)
+4. Extraer funciones de test
+5. Para cada funcion: saltar si esta marcada como skip, luego aplicar TEST-001 a TEST-006
+
+**Configuracion:** `TestQualityConfig` con:
+- `min_assertions_per_test` (default 1) — threshold para TEST-001
+- `detect_trivial_asserts` (default True) — habilita/deshabilita TEST-002
+- `detect_mock_mirrors` (default True) — habilita/deshabilita TEST-006
+
+**Tests:** 32 tests en `test_analyzers/test_tests/test_analyzer.py`
+
+### F3.5 — Wiring al CLI
+
+**Archivo modificado:** `src/vigil/cli.py`
+
+- `_register_analyzers()` actualizado para registrar `TestQualityAnalyzer` ademas de `DependencyAnalyzer`, `AuthAnalyzer` y `SecretsAnalyzer`
+- Los cuatro analyzers se ejecutan en `vigil scan` por defecto
+- `vigil tests` ejecuta el scan filtrando por categoria `test-quality`
+
+**Tests CLI actualizados:**
+- `TestTestsCommand` en `test_cli_edge_cases.py` actualizado: test content cambiado de `assert True` a `assert 1 + 1 == 2` para evitar que TEST-002 se active con el analyzer real
+- `test_tests_min_assertions` exit code actualizado de 0 a 1
+
+### F3.Fixtures — Test fixtures
+
+**Archivos creados en `tests/fixtures/tests/`:**
+
+- `empty_tests_python.py` — Python tests con issues de todas las categorias (TEST-001 a TEST-006) + tests legitimos que NO deben triggear
+- `empty_tests_js.js` — JavaScript tests con issues equivalentes + tests limpios
+- `secure_tests_python.py` — Tests bien escritos (0 findings esperados)
+- `edge_cases_python.py` — async tests, single-line tests, nested classes, parametrized, BaseException catches, mock mirrors, mixed assertions
+- `edge_cases_js.js` — async tests, describe blocks, nested braces, catch-all, mock resolved mirrors, skips
+- `npm_tests.test.js` — proyecto npm simulado con mix de tests buenos y malos
+
+### Resumen de tests FASE 3
+
+| Archivo | Tests | Cobertura |
+|---------|-------|-----------|
+| `test_analyzers/test_tests/test_analyzer.py` | 32 | ~98% analyzer.py |
+| `test_analyzers/test_tests/test_assert_checker.py` | 46 | ~99% assert_checker.py |
+| `test_analyzers/test_tests/test_mock_checker.py` | 18 | ~96% mock_checker.py |
+| `test_analyzers/test_tests/test_coverage_heuristics.py` | 20 | 100% coverage_heuristics.py |
+| **Total FASE 3 (pre-QA)** | **116** | **~97%** |
+
+### F3.QA — Auditoria de calidad y tests adicionales
+
+**Estado: COMPLETADA**
+
+Se realizo una auditoria exhaustiva del codigo de FASE 3. Se encontraron 6 bugs y se corrigieron todos.
+
+**Bugs corregidos:**
+
+1. **`assert_checker.py:14`** — `_PYTHON_TEST_FUNC` regex no matcheaba `async def test_*`. Agregado `(?:async\s+)?` al patron.
+2. **`assert_checker.py:179-204`** — Funciones single-line `def test_x(): assert True` tenian 0 assertions porque el body empezaba en la linea siguiente. Agregada deteccion de inline body (`has_inline_body`) que incluye la linea del def en el range del body.
+3. **`assert_checker.py:93-95`** — `_PYTHON_CATCH_ALL` no matcheaba `except BaseException:`. Agregado `(?:Base)?` al regex.
+4. **`mock_checker.py:39-48`** — `_LITERAL_PATTERN` aceptaba comillas mixtas (`'hello"`) como literal valido. Separado en dos patrones: `'[^']*'` y `"[^"]*"`.
+5. **`analyzer.py:316`** — `import re` dentro del cuerpo de `_is_skipped_test()`. Movido a import a nivel de modulo.
+6. **`assert_checker.py:150-152`** — `_JS_STATUS_ASSERT` no matcheaba `toHaveProperty('status', ...)`. Agregado patron al regex.
+
+**Limitaciones documentadas (no bugs):**
+
+- Trivial detection no funciona en tests single-line inline (`def test_x(): assert True` — la assertion se cuenta pero el patron trivial no matchea la linea completa)
+- `@patch("module.func", return_value=42)` decorator no matcheado por `_PYTHON_MOCK_PATCH_RETURN` (solo matchea `@mock.patch` / `@unittest.mock.patch`)
+- Conteo de llaves en JS puede confundirse con llaves dentro de strings (limitacion conocida V0)
+- Block comments (`/* */`, `"""`) no detectados como comentarios (limitacion compartida con auth/secrets)
+
+**Tests nuevos: 81 tests en 1 archivo + fixtures en 3 archivos:**
+
+| Archivo | Tests | Cobertura |
+|---------|-------|-----------|
+| `test_analyzers/test_tests/test_qa_regression.py` | 81 | Regression bugs 1-4, edge cases (async, single-line, nested, binary, multifile), false positives (12), false negatives (7), configuration (5), fixture integration (5), boundary conditions (11), coverage heuristics (8), finding structure (7) |
+
+**Fixtures nuevas en `tests/fixtures/tests/`:**
+
+- `edge_cases_python.py` — async, single-line, nested classes, BaseException, parametrized, mock mirrors, mixed assertions
+- `edge_cases_js.js` — async, describe wrapping, nested braces, catch-all, mock resolved, skips
+- `npm_tests.test.js` — jest tests con mix de issues
+
+**Cobertura por modulo post-QA:**
+
+| Modulo | Stmts | Miss | Cobertura |
+|--------|-------|------|-----------|
+| `analyzers/tests/__init__.py` | 2 | 0 | 100% |
+| `analyzers/tests/analyzer.py` | 86 | 2 | 98% |
+| `analyzers/tests/assert_checker.py` | 149 | 2 | 99% |
+| `analyzers/tests/coverage_heuristics.py` | 35 | 0 | 100% |
+| `analyzers/tests/mock_checker.py` | 77 | 3 | 96% |
+| **Total FASE 3** | **349** | **7** | **98%** |
+
+**Totales post-QA FASE 3:**
+- Tests FASE 3: 209 (128 originales + 81 QA)
+- Tests totales proyecto: 1170
+- Cobertura FASE 3: 98%
 
 ---
 

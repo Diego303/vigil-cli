@@ -41,6 +41,12 @@ vigil-cli/
         placeholder_detector.py   # Deteccion de placeholders y assignments
         entropy.py                # Calculo de Shannon entropy
         env_tracer.py             # Tracing de valores desde .env.example
+      tests/                      # CAT-06: Test Quality Analyzer
+        __init__.py
+        analyzer.py               # TestQualityAnalyzer (TEST-001..006)
+        assert_checker.py         # Extraccion de funciones test, conteo de assertions
+        mock_checker.py           # Deteccion de mock mirrors
+        coverage_heuristics.py    # Identificacion de archivos de test y frameworks
     reports/
       __init__.py
       formatter.py                # BaseFormatter Protocol + factory
@@ -90,6 +96,12 @@ vigil-cli/
         test_entropy.py           # Tests de calculo de Shannon entropy
         test_env_tracer.py        # Tests de tracing de .env.example
         test_qa_regression.py     # QA: edge cases y regresiones
+      test_tests/
+        test_analyzer.py          # Tests del TestQualityAnalyzer
+        test_assert_checker.py    # Tests de extraccion y conteo de assertions
+        test_mock_checker.py      # Tests de deteccion de mock mirrors
+        test_coverage_heuristics.py # Tests de identificacion de archivos test
+        test_qa_regression.py     # QA: edge cases y regresiones (81 tests)
     fixtures/                     # Archivos de prueba
       deps/                       # Fixtures de dependencias
         valid_project/            #   Proyecto con deps legitimas
@@ -110,6 +122,14 @@ vigil-cli/
         .env.example              #   Ejemplo de .env.example
         copies_env_example.py     #   Codigo que copia valores de .env.example
         secure_code.py            #   Codigo seguro (sin findings)
+      tests/                      # Fixtures de test quality
+        vulnerable_tests.py       #   Tests Python con problemas (sin assertions, triviales, catch-all)
+        vulnerable_tests.js       #   Tests JavaScript con problemas
+        clean_tests.py            #   Tests Python correctos (sin findings)
+        clean_tests.js            #   Tests JavaScript correctos (sin findings)
+        edge_cases_python.py      #   Casos borde Python (async, single-line, nested)
+        edge_cases_js.js          #   Casos borde JavaScript (async, describe, nested)
+        npm_tests.test.js         #   Tests npm/jest con problemas mixtos
 ```
 
 ---
@@ -307,10 +327,12 @@ def _register_analyzers(engine: ScanEngine) -> None:
     from vigil.analyzers.deps import DependencyAnalyzer
     from vigil.analyzers.auth import AuthAnalyzer
     from vigil.analyzers.secrets import SecretsAnalyzer
+    from vigil.analyzers.tests import TestQualityAnalyzer
 
     engine.register_analyzer(DependencyAnalyzer())
     engine.register_analyzer(AuthAnalyzer())
     engine.register_analyzer(SecretsAnalyzer())
+    engine.register_analyzer(TestQualityAnalyzer())
 ```
 
 Esta funcion se invoca en los comandos `scan`, `deps` y `tests`.

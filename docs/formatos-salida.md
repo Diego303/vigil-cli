@@ -37,7 +37,7 @@ Formato por defecto, optimizado para lectura en terminal. Incluye colores ANSI, 
 ### Ejemplo de salida
 
 ```
-  vigil v0.3.0 — scanned 42 files
+  vigil v0.4.0 — scanned 42 files
 
   X CRITICAL  DEP-001  requirements.txt:14
     Package 'python-jwt-utils' does not exist in pypi.
@@ -57,7 +57,7 @@ Formato por defecto, optimizado para lectura en terminal. Incluye colores ANSI, 
 ### Salida limpia (sin findings)
 
 ```
-  vigil v0.3.0 — scanned 42 files
+  vigil v0.4.0 — scanned 42 files
 
   No findings.
 
@@ -86,7 +86,7 @@ Formato estructurado para procesamiento programatico, integracion con otras herr
 
 ```json
 {
-  "version": "0.3.0",
+  "version": "0.4.0",
   "files_scanned": 42,
   "duration_seconds": 1.2,
   "findings": [
@@ -252,7 +252,7 @@ Static Analysis Results Interchange Format. Formato estandar de la industria par
       "tool": {
         "driver": {
           "name": "vigil",
-          "version": "0.3.0",
+          "version": "0.4.0",
           "informationUri": "https://github.com/org/vigil",
           "rules": [
             {

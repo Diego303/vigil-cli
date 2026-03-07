@@ -48,7 +48,7 @@ FROM python:3.12-slim AS base
 # Metadata
 LABEL maintainer="vigil team"
 LABEL description="Security scanner for AI-generated code"
-LABEL version="0.3.0"
+LABEL version="0.4.0"
 
 # Crear usuario no-root
 RUN groupadd -r vigil && useradd -r -g vigil vigil
@@ -242,7 +242,7 @@ Se recomienda usar `python:3.12-slim` como balance entre tamano y compatibilidad
 
 3. **Usar usuario no-root**: vigil no necesita privilegios elevados.
 
-4. **Pinear la version de vigil**: En Dockerfiles de produccion, usar `pip install vigil-ai-cli==0.3.0` en lugar de `vigil-ai-cli` para builds reproducibles.
+4. **Pinear la version de vigil**: En Dockerfiles de produccion, usar `pip install vigil-ai-cli==0.4.0` en lugar de `vigil-ai-cli` para builds reproducibles.
 
 5. **Separar scan de build**: En multi-stage builds, ejecutar vigil como un stage independiente para que falle rapido sin desperdiciar recursos en stages posteriores.
 
