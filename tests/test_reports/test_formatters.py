@@ -169,7 +169,7 @@ class TestSarifFormatter:
         data = json.loads(output)
         driver = data["runs"][0]["tool"]["driver"]
         assert driver["name"] == "vigil"
-        assert driver["version"] == "0.5.0"
+        assert driver["version"] == "0.6.0"
 
 
 class TestSummary:

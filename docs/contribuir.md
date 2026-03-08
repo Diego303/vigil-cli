@@ -58,6 +58,12 @@ src/vigil/
   logging/            # Setup de structlog
 tests/
   test_cli.py         # Tests del CLI
+  test_cli_edge_cases.py # Edge cases del CLI
+  test_integration.py # Tests de integracion basicos
+  test_integration_e2e.py # Tests end-to-end con fixtures reales
+  test_changed_only.py # Tests de _get_changed_files()
+  test_main_module.py # Tests de python -m vigil y BaseAnalyzer protocol
+  test_fase5_qa.py    # QA regression tests FASE 5
   test_core/          # Tests del core
   test_config/        # Tests de configuracion
   test_reports/       # Tests de formateadores
@@ -71,6 +77,9 @@ tests/
     auth/             #   Fixtures de auth
     secrets/          #   Fixtures de secrets
     tests/            #   Fixtures de test quality
+    integration/      #   Fixtures end-to-end
+      insecure_project/ # Proyecto AI-generated con vulnerabilidades
+      clean_project/    # Proyecto limpio (sin findings)
 docs/                 # Documentacion
 ```
 
@@ -337,11 +346,15 @@ pytest -v
 | Analyzers (secrets) | ~130 |
 | Analyzers (test-quality) | ~128 |
 | Analyzers (test-quality) QA | 81 |
-| Integration | 14 |
+| Integration basica | 14 |
 | Integration QA (deps) | 13 |
 | Integration (auth+secrets) | ~70 |
+| Integration E2E (FASE 5) | 52 |
+| Changed-only (FASE 5) | 11 |
+| Main module + protocol (FASE 5) | 8 |
+| QA regression (FASE 5) | 111 |
 | Logging | 3 |
-| **Total** | **~1336** |
+| **Total** | **1518** |
 
 Cobertura global: **~98%** (99% en modulo reports)
 
@@ -391,7 +404,7 @@ vigil se desarrolla en fases incrementales:
 | **FASE 2** | Auth + Secrets analyzers (AUTH-001..007, SEC-001..006) | Completada (QA done) |
 | **FASE 3** | Test quality analyzer (TEST-001..006) | Completada (QA done) |
 | **FASE 4** | Reports polish (formatters, summary, icons, SARIF 2.1.0) | Completada (QA done) |
-| **FASE 5** | Integracion, fixtures realistas, docs | Pendiente |
+| **FASE 5** | Integracion, fixtures realistas, docs, QA exhaustivo | Completada (QA done) |
 | **FASE 6** | Popular packages corpus, polish final | Pendiente |
 
 Consultar `SEGUIMIENTO-V0.md` para el estado detallado de cada fase.

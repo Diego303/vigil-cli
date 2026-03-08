@@ -381,7 +381,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret-not-for-production")
 
 ## CAT-06: Test Quality
 
-> **Estado: IMPLEMENTADO** — El `TestQualityAnalyzer` esta activo desde v0.5.0. Todas las reglas TEST-001 a TEST-006 estan implementadas. Soporta pytest/unittest (Python) y jest/mocha (JavaScript/TypeScript).
+> **Estado: IMPLEMENTADO** — El `TestQualityAnalyzer` esta activo desde v0.6.0. Todas las reglas TEST-001 a TEST-006 estan implementadas. Soporta pytest/unittest (Python) y jest/mocha (JavaScript/TypeScript).
 
 Detecta tests que dan cobertura falsa — pasan pero no verifican nada real. Esto se conoce como "test theater".
 

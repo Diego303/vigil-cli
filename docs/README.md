@@ -22,7 +22,7 @@ Bienvenido a la documentacion de **vigil**, el scanner de seguridad para codigo 
 
 ## Estado del proyecto
 
-vigil esta en desarrollo activo. La version actual (v0.5.0) incluye:
+vigil esta en desarrollo activo. La version actual (v0.6.0) incluye:
 
 - CLI completa con 5 subcomandos (`scan`, `deps`, `tests`, `init`, `rules`)
 - Motor de analisis con soporte para multiples analyzers
@@ -33,6 +33,8 @@ vigil esta en desarrollo activo. La version actual (v0.5.0) incluye:
 - 26 reglas definidas en 4 categorias (24 implementadas, 2 pendientes)
 - 4 formatos de salida (human, JSON, JUnit XML, SARIF 2.1.0)
 - Sistema de configuracion con YAML, presets y overrides por CLI
-- 1170 tests unitarios (~98% cobertura)
+- Suite de integracion end-to-end con fixtures de codigo AI-generated real
+- QA exhaustivo: falsos positivos, falsos negativos, edge cases, regresiones
+- 1518 tests (99% cobertura en modulo reports)
 
 Consulta el [SEGUIMIENTO-V0.md](../SEGUIMIENTO-V0.md) para el estado detallado.
