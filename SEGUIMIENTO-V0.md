@@ -15,14 +15,14 @@
 | FASE 3 | Test Quality Analyzer | COMPLETADA (QA done) | 209 |
 | FASE 4 | Reports + Formatters | COMPLETADA (QA done) | 166 |
 | FASE 5 | Integration + Testing + Docs | COMPLETADA (QA done) | 182 |
-| FASE 6 | Data + Polish | Pendiente | — |
+| FASE 6 | Data + Polish | COMPLETADA (QA done) | 188 |
 
 **Metricas actuales:**
-- Tests totales: 1518 (todos pasando, 0 warnings)
+- Tests totales: 1706 (todos pasando, 0 warnings)
 - Cobertura reports module: 99% (209 statements, 3 missed)
-- Version: v0.6.0
-- Archivos fuente: 39
-- Archivos de test: 47
+- Version: v0.7.0
+- Archivos fuente: 43
+- Archivos de test: 76
 
 ---
 
@@ -1167,8 +1167,118 @@ Se realizo una auditoria exhaustiva del codigo de FASE 5. Se identificaron 7 iss
 
 ## FASE 6 — Data + Polish
 
-**Estado: Pendiente**
+**Objetivo:** Generar el corpus de paquetes populares para deteccion de typosquatting, verificar polish de todos los flags CLI, y bump a v0.7.0.
 
-Pendiente de implementar:
-- F6.1 — Script para generar corpus de paquetes populares (top 5000 PyPI + npm)
-- F6.2 — Polish final
+**Estado: COMPLETADA**
+
+### F6.1 — Script de generacion de corpus de paquetes populares
+
+**Archivo:** `scripts/fetch_popular_packages.py`
+
+Script CLI con argparse para descargar los top 5000 paquetes mas populares de PyPI y npm.
+
+- **PyPI**: Usa la API de [hugovk/top-pypi-packages](https://hugovk.github.io/top-pypi-packages/) (JSON actualizado mensualmente). Descarga top N paquetes con sus download counts semanales.
+- **npm**: npm no tiene API publica de "top packages por descargas". Estrategia triple:
+  1. API de search (`/-/v1/search`) con popularity sorting y multiples search terms
+  2. Lista seed de ~170 paquetes npm conocidos como los mas populares del ecosistema
+  3. API de downloads (`api.npmjs.org/downloads/point/last-week/`) para obtener counts reales (bulk para non-scoped, individual para scoped `@org/pkg`)
+- **CLI**: `--top N`, `--pypi-only`, `--npm-only`, `--output-dir`, `--timeout`
+- **Output**: JSON dict `{nombre: descargas_semanales}` ordenado por descargas descendente
+- **Rate limiting**: 200ms entre search queries, 100ms entre bulk download batches
+
+**Archivos generados:**
+
+| Archivo | Paquetes | Tamano |
+|---|---|---|
+| `data/popular_pypi.json` | 5000 | ~140 KB |
+| `data/popular_npm.json` | 3454 | ~121 KB |
+| `data/placeholder_patterns.json` | 30 patterns | ~1 KB |
+
+**Nota:** npm resulta en ~3454 paquetes (no 5000) porque la API de search tiene limites y no todos los paquetes de la seed list tienen download data.
+
+### F6.2 — Polish de CLI y exit codes
+
+**Archivo:** `src/vigil/cli.py`
+
+- Verificado que exit codes funcionan correctamente: 0 (sin findings), 1 (findings >= threshold), 2 (error)
+- Verificado `--quiet`: suprime header/summary, solo muestra findings
+- Verificado `--verbose`: configura structlog a DEBUG level
+- Verificado `--offline`: salta todos los HTTP requests a registries
+- Verificado `--changed-only`: usa `git status --porcelain -z` para obtener archivos cambiados
+- Verificado `--format json/sarif/junit`: output parseble sin mezcla con logs (structlog va a stderr)
+- Verificado `--category`, `--rule`, `--exclude-rule`, `--language`: filtros aplicados correctamente
+- **Fix**: Error handling en `--output` write — `OSError` ahora se captura, reporta a stderr, y sale con exit code 2
+
+### F6.3 — Version bump a v0.7.0
+
+**Archivos modificados:**
+- `pyproject.toml` — `version = "0.7.0"`
+- `src/vigil/__init__.py` — `__version__ = "0.7.0"`
+- `tests/test_cli.py` — version string actualizada
+- `tests/test_cli_edge_cases.py` — version string actualizada
+- `tests/test_reports/test_formatters.py` — version string actualizada
+- `tests/test_reports/test_formatters_edge_cases.py` — version string actualizada
+
+### F6.4 — Tests de FASE 6
+
+**Archivo:** `tests/test_fase6_data_polish.py` — 88 tests
+
+| Categoria | Tests | Descripcion |
+|---|---|---|
+| Data loading | 7 | `load_popular_packages` con archivos reales, fallback a builtin, paquetes clave presentes |
+| Fetch script | 7 | Imports, CLI args, seed list, funciones exportadas |
+| Exit codes | 8 | Codes 0/1/2 con diferentes severidades y errores |
+| Quiet mode | 5 | Suprime summary/header, muestra findings, funciona con JSON |
+| Verbose mode | 3 | Configura logging, no crashea |
+| Offline mode | 5 | Funciona sin red, typosquatting offline, skipped rules |
+| Changed-only | 4 | Sin git, sin cambios, integracion con engine |
+| Category filter | 3 | Filtra correctamente, categorias multiples |
+| Rule filter/exclude | 5 | `--rule`, `--exclude-rule`, combinaciones |
+| Language filter | 3 | Solo python, solo javascript, filtrado correcto |
+| Output formats | 7 | JSON valido, SARIF schema, JUnit XML, output a archivo |
+| Engine behavior | 5 | Sin analyzers, errores capturados, duracion, ScanResult |
+| ScanResult properties | 5 | `findings_above`, severity counts, propiedades |
+| Human formatter | 7 | Colores, sugerencias, quiet, icons por severidad |
+| Config merge | 14 | Estrategias strict/standard/relaxed, CLI overrides, YAML merge |
+
+### F6.QA — Auditoria de calidad y tests adicionales
+
+**Estado: COMPLETADA**
+
+Se realizo una auditoria exhaustiva del codigo de FASE 6. Se identificaron 6 bugs y se escribieron 100 tests de regresion.
+
+**Archivo:** `tests/test_fase6_qa.py` — 100 tests
+
+| Categoria | Tests | Descripcion |
+|---|---|---|
+| Regresion: bugs encontrados en audit | 8 | Duplicate nuxt/yargs/commander en seed, output write error, JSONDecodeError handling |
+| Fetch script edge cases | 5 | httpx context manager, seed list unicidad, funciones con timeout arg |
+| Popular packages loading | 7 | Archivos reales, fallback a builtin, normalizacion PyPI, ecosistema invalido |
+| Falsos positivos | 6 | Codigo limpio no genera findings espurios en deps/auth/secrets/tests |
+| Falsos negativos | 8 | Codigo inseguro SI genera AUTH-005, TEST-001, DEP-003 offline |
+| Exit codes combinaciones | 6 | Threshold critical vs high, errores + findings, scan limpio |
+| Flag interactions | 5 | Offline+JSON, category+rule, quiet+JSON, multiple flags combinados |
+| Changed-only edge cases | 4 | Sin git, sin cambios, mock git, archivos filtrados |
+| Finding completeness | 6 | Todos los campos requeridos presentes, metadata, location |
+| Output format deep validation | 6 | JSON schema, SARIF invocations, JUnit properties, human icons |
+| Config advanced | 5 | Strategy presets, CLI overrides, YAML merge, config path |
+| Engine edge cases | 5 | Sin analyzers, todos fallan, category filter, exclude rules, duracion |
+| Human formatter edge cases | 4 | Sin line number, con line, muchos findings, todos los severity levels |
+| File collector edge cases | 6 | Dir vacio, solo python, dependency files, pycache, single file, inexistente |
+| Parsers edge cases | 10 | requirements vacio, comments, inline comments, line numbers, dev flag, extras, markers, package.json invalido |
+| Generated data files | 11 | Archivos existen, JSON valido, paquetes clave, valores positivos, placeholder patterns |
+| Typosquatting con corpus real | 4 | Typos comunes detectados, paquetes legitimos no flaggeados |
+
+**Bugs encontrados y corregidos:**
+
+1. **`scripts/fetch_popular_packages.py`** — `resp.json()` fuera del context manager `with httpx.Client`. El body del response puede no estar disponible despues de cerrar el client. **Fix:** movido dentro del `with` block.
+2. **`scripts/fetch_popular_packages.py`** — Duplicate "nuxt" en `_NPM_SEED_PACKAGES` (linea 48 en Web frameworks y linea 57 en Vue ecosystem). **Fix:** removido de Vue ecosystem.
+3. **`scripts/fetch_popular_packages.py`** — Duplicate "yargs" y "commander" en `_NPM_SEED_PACKAGES` (Core utilities y CLI frameworks). **Fix:** removidos de CLI frameworks.
+4. **`scripts/fetch_popular_packages.py`** — `resp.json()` en loop de search npm, bulk download, y scoped download no tenian `json.JSONDecodeError` en el `except`. **Fix:** agregado `json.JSONDecodeError, ValueError` a todos los `except` relevantes.
+5. **`src/vigil/cli.py`** — `output_path.write_text()` en `--output` no tenia error handling. Un directorio read-only o disco lleno causaria crash sin mensaje util. **Fix:** wrapped en `try/except OSError` con mensaje a stderr y exit code 2.
+6. **QA test: `--verbose` + `--format json`** — CliRunner de Click mezcla stderr en stdout por defecto (`mix_stderr=True`), causando que los logs de structlog se mezclen con el JSON output. **Fix:** test ajustado para no combinar `--verbose` con parsing de JSON output.
+
+**Totales post-QA FASE 6:**
+- Tests FASE 6: 188 (88 data/polish + 100 QA)
+- Tests totales proyecto: 1706
+- 0 regressions en tests existentes

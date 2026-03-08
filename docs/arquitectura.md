@@ -67,6 +67,8 @@ vigil-cli/
     test_changed_only.py          # Tests de _get_changed_files() (11 tests)
     test_main_module.py           # Tests de python -m vigil y BaseAnalyzer protocol (8 tests)
     test_fase5_qa.py              # QA regression FASE 5 (111 tests)
+    test_fase6_data_polish.py     # Tests de data loading y polish (88 tests)
+    test_fase6_qa.py              # QA regression FASE 6 (100 tests)
     test_core/
       test_finding.py
       test_engine.py
@@ -152,6 +154,12 @@ vigil-cli/
           app.py                  #     FastAPI con auth correcta, CORS restringido
           test_app.py             #     Tests con assertions reales
           requirements.txt        #     Dependencias legitimas
+  data/
+    popular_pypi.json             # Top 5000 PyPI packages (descargas semanales)
+    popular_npm.json              # Top 3454 npm packages (descargas semanales)
+    placeholder_patterns.json     # 30 patrones regex de placeholders
+  scripts/
+    fetch_popular_packages.py     # Script para regenerar corpus de paquetes populares
 ```
 
 ---

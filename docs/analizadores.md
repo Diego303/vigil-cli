@@ -58,7 +58,7 @@ requets==2.31.0     # Similaridad 0.875 con "requests" -> DEP-003 HIGH
 
 **Normalizacion:** Para PyPI, hyphens (`-`), underscores (`_`) y dots (`.`) se tratan como equivalentes (PEP 503). `my-package`, `my_package` y `my.package` se normalizan al mismo nombre antes de comparar.
 
-**Corpus:** Se usa un corpus built-in de ~100 paquetes PyPI y ~70 paquetes npm como fallback. Cuando se generen los archivos `data/popular_pypi.json` y `data/popular_npm.json` (FASE 6), se usaran esos.
+**Corpus:** Se usan los archivos `data/popular_pypi.json` (5000 paquetes) y `data/popular_npm.json` (3454 paquetes) con datos reales de descargas semanales. Si estos archivos no estan disponibles, se usa un corpus built-in de ~236 paquetes PyPI y ~70 paquetes npm como fallback. El corpus se puede regenerar con `python scripts/fetch_popular_packages.py`.
 
 #### DEP-005 — No source repository (MEDIUM)
 

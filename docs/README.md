@@ -22,7 +22,7 @@ Bienvenido a la documentacion de **vigil**, el scanner de seguridad para codigo 
 
 ## Estado del proyecto
 
-vigil esta en desarrollo activo. La version actual (v0.6.0) incluye:
+vigil esta en desarrollo activo. La version actual (v0.7.0) incluye:
 
 - CLI completa con 5 subcomandos (`scan`, `deps`, `tests`, `init`, `rules`)
 - Motor de analisis con soporte para multiples analyzers
@@ -30,11 +30,12 @@ vigil esta en desarrollo activo. La version actual (v0.6.0) incluye:
 - **Auth Analyzer activo** — detecta endpoints sin auth, CORS permisivo, JWT inseguro, cookies sin flags, timing attacks (AUTH-001 a AUTH-007)
 - **Secrets Analyzer activo** — detecta placeholders, secrets de baja entropia, connection strings, env defaults, valores copiados de .env.example (SEC-001 a SEC-004, SEC-006)
 - **Test Quality Analyzer activo** — detecta tests sin assertions, assertions triviales, catch-all exceptions, skips sin razon, API tests sin status code, mock mirrors (TEST-001 a TEST-006)
+- **Corpus de paquetes populares** — 5000 PyPI + 3454 npm paquetes para deteccion de typosquatting con datos reales de descargas semanales
 - 26 reglas definidas en 4 categorias (24 implementadas, 2 pendientes)
 - 4 formatos de salida (human, JSON, JUnit XML, SARIF 2.1.0)
 - Sistema de configuracion con YAML, presets y overrides por CLI
 - Suite de integracion end-to-end con fixtures de codigo AI-generated real
 - QA exhaustivo: falsos positivos, falsos negativos, edge cases, regresiones
-- 1518 tests (99% cobertura en modulo reports)
+- 1706 tests (99% cobertura en modulo reports)
 
 Consulta el [SEGUIMIENTO-V0.md](../SEGUIMIENTO-V0.md) para el estado detallado.

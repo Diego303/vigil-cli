@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-03-08
+
+### Added
+
+- **Popular packages corpus generation (FASE 6)** — script and data files for typosquatting detection
+  - **`scripts/fetch_popular_packages.py`** — CLI script to download top 5000 PyPI and npm packages with weekly download counts. Uses hugovk/top-pypi-packages API for PyPI, npm search API + seed list + downloads API for npm. Supports `--top`, `--pypi-only`, `--npm-only`, `--output-dir`, `--timeout` flags.
+  - **`data/popular_pypi.json`** — 5000 PyPI packages with weekly download counts (~140 KB)
+  - **`data/popular_npm.json`** — 3454 npm packages with weekly download counts (~121 KB). npm total is lower than 5000 because npm lacks a public "top packages" API.
+  - **`data/placeholder_patterns.json`** — 30 placeholder patterns reference file matching embedded patterns in secrets detection
+- **188 new tests for FASE 6** (1706 total) across 2 test files:
+  - `tests/test_fase6_data_polish.py` — 88 tests covering data loading, fetch script, exit codes, quiet/verbose/offline modes, changed-only, category/rule/language filters, output formats, engine behavior, config merge strategies
+  - `tests/test_fase6_qa.py` — 100 QA tests covering regression bugs, fetch script edge cases, popular packages loading, false positives/negatives, exit code combinations, flag interactions, changed-only edge cases, finding completeness, output format deep validation, config advanced, engine edge cases, human formatter, file collector, parsers, generated data files, typosquatting with real corpus
+
+### Fixed
+
+- **Output file write error handling** — `vigil scan --output report.json` now catches `OSError` (read-only directory, disk full) with a clear error message to stderr and exit code 2. Previously would crash with an unhandled exception.
+- **Duplicate npm seed packages** — removed duplicate entries for "nuxt", "yargs", and "commander" in `_NPM_SEED_PACKAGES` list in `scripts/fetch_popular_packages.py`
+- **httpx response outside context manager** — `resp.json()` in `fetch_pypi_top()` was called after the `with httpx.Client` block exited. Moved inside the context manager.
+- **Missing JSONDecodeError handling in npm fetch** — `resp.json()` calls in npm search loop, bulk download, and scoped download could raise `json.JSONDecodeError` which was not caught. Added to all relevant `except` clauses.
+
 ## [0.6.0] — 2026-03-08
 
 ### Added
