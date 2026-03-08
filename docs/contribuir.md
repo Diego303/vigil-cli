@@ -64,6 +64,8 @@ tests/
   test_changed_only.py # Tests de _get_changed_files()
   test_main_module.py # Tests de python -m vigil y BaseAnalyzer protocol
   test_fase5_qa.py    # QA regression tests FASE 5
+  test_fase6_data_polish.py # Tests de data loading y polish FASE 6
+  test_fase6_qa.py    # QA regression tests FASE 6
   test_core/          # Tests del core
   test_config/        # Tests de configuracion
   test_reports/       # Tests de formateadores
@@ -80,6 +82,12 @@ tests/
     integration/      #   Fixtures end-to-end
       insecure_project/ # Proyecto AI-generated con vulnerabilidades
       clean_project/    # Proyecto limpio (sin findings)
+data/                 # Datos estaticos
+  popular_pypi.json   #   Top 5000 PyPI packages (descargas semanales)
+  popular_npm.json    #   Top 3454 npm packages (descargas semanales)
+  placeholder_patterns.json # Patrones de placeholders
+scripts/              # Scripts de mantenimiento
+  fetch_popular_packages.py # Genera corpus de paquetes populares
 docs/                 # Documentacion
 ```
 
@@ -353,8 +361,10 @@ pytest -v
 | Changed-only (FASE 5) | 11 |
 | Main module + protocol (FASE 5) | 8 |
 | QA regression (FASE 5) | 111 |
+| Data + Polish (FASE 6) | 88 |
+| QA regression (FASE 6) | 100 |
 | Logging | 3 |
-| **Total** | **1518** |
+| **Total** | **1706** |
 
 Cobertura global: **~98%** (99% en modulo reports)
 
@@ -405,7 +415,7 @@ vigil se desarrolla en fases incrementales:
 | **FASE 3** | Test quality analyzer (TEST-001..006) | Completada (QA done) |
 | **FASE 4** | Reports polish (formatters, summary, icons, SARIF 2.1.0) | Completada (QA done) |
 | **FASE 5** | Integracion, fixtures realistas, docs, QA exhaustivo | Completada (QA done) |
-| **FASE 6** | Popular packages corpus, polish final | Pendiente |
+| **FASE 6** | Popular packages corpus, polish final | Completada (QA done) |
 
 Consultar `SEGUIMIENTO-V0.md` para el estado detallado de cada fase.
 

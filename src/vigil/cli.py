@@ -135,9 +135,13 @@ def scan(
     report = formatter.format(result)
 
     if output:
-        output_path = Path(output)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(report, encoding="utf-8")
+        try:
+            output_path = Path(output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(report, encoding="utf-8")
+        except OSError as e:
+            click.echo(f"Error writing output file: {e}", err=True)
+            sys.exit(ExitCode.ERROR)
         if output_format == "human":
             click.echo(report)
     else:
