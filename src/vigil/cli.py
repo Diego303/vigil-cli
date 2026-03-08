@@ -334,35 +334,49 @@ def _register_analyzers(engine: ScanEngine) -> None:
 
 
 def _get_changed_files() -> list[str]:
-    """Obtiene archivos cambiados desde el ultimo commit via git."""
+    """Obtiene archivos cambiados desde el ultimo commit via git.
+
+    Incluye archivos con cambios staged, unstaged, y untracked.
+    Usa git status --porcelain -z para manejar filenames con espacios.
+    """
     import subprocess
 
     try:
+        # Usar -z para separar con NUL byte (maneja filenames con espacios)
         result = subprocess.run(
-            ["git", "diff", "--name-only", "HEAD"],
+            ["git", "status", "--porcelain", "-u", "-z"],
             capture_output=True,
             text=True,
             timeout=10,
         )
         if result.returncode != 0:
-            # Intentar con archivos untracked tambien
-            result = subprocess.run(
-                ["git", "status", "--porcelain", "-u"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            if result.returncode != 0:
-                return []
-            # Parsear output de git status --porcelain
-            files = []
-            for line in result.stdout.strip().splitlines():
-                if line:
-                    # Formato: "XY filename" o "XY -> newfilename"
-                    parts = line[3:].split(" -> ")
-                    files.append(parts[-1])
-            return files
+            return []
 
-        return [f for f in result.stdout.strip().splitlines() if f]
+        files: list[str] = []
+        # Output separado por NUL bytes, formato: "XY filename\0" o "XY old\0new\0"
+        entries = result.stdout.split("\0")
+        i = 0
+        while i < len(entries):
+            entry = entries[i]
+            if not entry:
+                i += 1
+                continue
+
+            status = entry[:2]
+            filename = entry[3:]
+
+            # Renames (R) y copies (C) tienen un segundo campo con el nuevo nombre
+            if status[0] in ("R", "C"):
+                i += 1
+                if i < len(entries):
+                    filename = entries[i]  # Usar el nuevo nombre
+
+            # Ignorar archivos eliminados
+            if status.strip() != "D" and status[1] != "D":
+                files.append(filename)
+
+            i += 1
+
+        return files
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return []

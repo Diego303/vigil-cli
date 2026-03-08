@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-03-08
+
+### Added
+
+- **Integration + End-to-End Tests (FASE 5)** — full test suite with realistic AI-generated fixtures and exhaustive QA
+  - **Insecure project fixture** (`tests/fixtures/integration/insecure_project/`) — 8 files representing a realistic AI-generated project with security issues across all 4 categories: hallucinated deps, CORS wildcards, hardcoded secrets, placeholder values, connection strings, test theater
+  - **Clean project fixture** (`tests/fixtures/integration/clean_project/`) — 3 files of legitimate code verified to produce zero false positives (no SEC-* findings, no CRITICAL/HIGH except AUTH-002 on `/login` by design)
+  - **52 end-to-end tests** (`test_integration_e2e.py`) — real analyzers against realistic fixtures, all 4 output formats verified, rule overrides, category filters, analyzer isolation
+  - **11 `_get_changed_files()` unit tests** (`test_changed_only.py`) — NUL-separated parsing, renames, spaces, deletions, staged/unstaged/untracked, git failure handling
+  - **8 `__main__.py` + protocol tests** (`test_main_module.py`) — `python -m vigil` works, BaseAnalyzer conformance for all 4 analyzers, custom analyzer integration
+  - **111 QA regression tests** (`test_fase5_qa.py`) — edge cases (empty files, BOM, Latin-1, binary, deep nesting), false positive verification (clean auth/secrets/tests), false negative verification (insecure code MUST trigger specific rules), CLI edge cases, configuration merge, engine override combinations
+- **1518 total tests** (up from 1336), all passing, 0 regressions
+
+### Fixed
+
+- **`--changed-only` filename handling** — `_get_changed_files()` rewritten to use `git status --porcelain -u -z` with NUL-byte separation instead of `git diff --name-only HEAD`. Now correctly handles filenames with spaces, renames (uses new name), copies, and excludes deleted files
+- **Deleted files included in `--changed-only`** — files with D status (staged or unstaged delete) are now properly excluded from the scan file list
+
+### Documented
+
+- **`include` config field unused** — `ScanConfig.include` exists but `engine._collect_files()` does not pass it to `collect_files()`. Documented with test, deferred to V1.
+- **`_should_run()` rules_filter incomplete** — `rules_filter` has a `pass` statement in `_should_run()`. Filtering is done post-hoc in `_apply_rule_overrides()`. Documented with test.
+- **YAML type safety** — Non-dict YAML content (list, string, integer) raises TypeError at `ScanConfig(**merged)`. Not gracefully handled. Documented with test.
+- **AUTH-005 suppression in test paths** — `cors_allow_localhost=True` (default) suppresses CORS findings in files under paths containing "test", "dev", "local", or "example". Fixtures under `tests/` are affected. Complementary test verifies detection with `cors_allow_localhost=False`.
+- **AUTH-002 on login endpoints** — POST `/login` intentionally triggers AUTH-002 (no auth middleware). This is by design — login endpoints ARE the auth entry point. Users can disable via rule override.
+
 ## [0.5.0] — 2026-03-07
 
 ### Added

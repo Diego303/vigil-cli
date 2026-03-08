@@ -14,14 +14,15 @@
 | FASE 2 | Auth & Secrets Analyzers | COMPLETADA (QA done) | 329 |
 | FASE 3 | Test Quality Analyzer | COMPLETADA (QA done) | 209 |
 | FASE 4 | Reports + Formatters | COMPLETADA (QA done) | 166 |
-| FASE 5 | Integration + Testing + Docs | Pendiente | — |
+| FASE 5 | Integration + Testing + Docs | COMPLETADA (QA done) | 182 |
 | FASE 6 | Data + Polish | Pendiente | — |
 
 **Metricas actuales:**
-- Tests totales: 1336 (todos pasando, 0 warnings)
+- Tests totales: 1518 (todos pasando, 0 warnings)
 - Cobertura reports module: 99% (209 statements, 3 missed)
+- Version: v0.6.0
 - Archivos fuente: 39
-- Archivos de test: 43
+- Archivos de test: 47
 
 ---
 
@@ -1037,12 +1038,130 @@ Los 3 misses en `human.py` (lineas 54-56) corresponden al branch de colores ANSI
 
 ## FASE 5 — Integration + Testing + Docs
 
-**Estado: Pendiente**
+**Objetivo:** Integracion completa end-to-end, suite de tests con fixtures de codigo AI-generated real, documentacion actualizada, QA exhaustivo.
 
-Pendiente de implementar:
-- F5.1 — Wiring de todos los analyzers al CLI
-- F5.2 — Test suite con fixtures de codigo AI-generated real
-- F5.3 — README final, documentacion de reglas
+**Estado: COMPLETADA (QA done)**
+
+### F5.1 — CLI wiring y --changed-only fix
+
+**Archivo:** `src/vigil/cli.py`
+
+- Los 4 analyzers ya estaban registrados via `_register_analyzers()` desde fases anteriores
+- **Fix critico en `_get_changed_files()`**: Reescrito para usar `git status --porcelain -u -z` con separacion NUL byte
+  - Antes: usaba `git diff --name-only HEAD` con split por newline (no manejaba espacios, renames, ni deletes)
+  - Ahora: parsea output NUL-separated, maneja correctamente:
+    - Filenames con espacios
+    - Renames (R status) y copies (C status) — usa el nombre nuevo
+    - Deletes (D en cualquier campo) — excluidos
+    - Staged, unstaged, y untracked files
+    - Edge cases: output truncado, entries cortos
+- Subcomandos verificados end-to-end: `scan`, `deps`, `tests`, `init`, `rules`
+
+### F5.2 — Fixtures de codigo AI-generated
+
+**Directorio:** `tests/fixtures/integration/`
+
+**Proyecto inseguro** (`insecure_project/` — 8 archivos):
+
+| Archivo | Findings esperados |
+|---|---|
+| `app.py` | AUTH-001, AUTH-002, AUTH-003, AUTH-004, AUTH-005*, AUTH-007, SEC-001, SEC-003, SEC-004 |
+| `server.js` | AUTH-002, AUTH-003, AUTH-004, AUTH-005*, AUTH-006, SEC-004 |
+| `config.py` | SEC-001, SEC-002, SEC-006 |
+| `test_app.py` | TEST-001, TEST-002, TEST-003, TEST-004, TEST-005, TEST-006 |
+| `test_server.test.js` | TEST-001, TEST-002, TEST-004, TEST-005 |
+| `requirements.txt` | DEP-003 (reqeusts typosquatting, python-jwt-utils hallucinated) |
+| `package.json` | DEP-003 (jsonwebtokn typosquatting) |
+| `.env.example` | Valores placeholder para SEC-006 tracing |
+
+*\* AUTH-005 suprimido por `cors_allow_localhost=True` (default) porque las fixtures estan bajo `tests/`. Detectado correctamente con `cors_allow_localhost=False`.*
+
+**Proyecto limpio** (`clean_project/` — 3 archivos):
+
+| Archivo | Descripcion |
+|---|---|
+| `app.py` | FastAPI con auth via Depends, CORS restringido, secrets de env vars |
+| `test_app.py` | Tests con assertions reales, skip con reason |
+| `requirements.txt` | Dependencias legitimas |
+
+Verificado: 0 findings de SEC-*, 0 findings CRITICAL/HIGH (excepto AUTH-002 en `/login` que es by-design).
+
+**conftest.py**: Previene que pytest recolecte los archivos `test_*.py` de las fixtures como tests reales.
+
+### F5.3 — Test suite de integracion
+
+**Archivo:** `tests/test_integration_e2e.py` — 52 tests
+
+| Clase | Tests | Descripcion |
+|---|---|---|
+| `TestEngineIntegrationInsecureProject` | 11 | Engine con analyzers reales contra fixtures inseguras |
+| `TestEngineIntegrationCleanProject` | 5 | Verificacion de falsos positivos con codigo limpio |
+| `TestEngineRuleOverrides` | 4 | disable, severity override, category filter, exclude-rule |
+| `TestCLIIntegrationScan` | 13 | Todos los formatos, filtros, modos via CliRunner |
+| `TestCLIIntegrationDeps` | 2 | Subcomando deps: offline, JSON |
+| `TestCLIIntegrationTests` | 3 | Subcomando tests: deteccion test theater |
+| `TestCLIIntegrationInit` | 4 | Estrategias, roundtrip config->scan |
+| `TestChangedOnlyIntegration` | 3 | Sin cambios, con archivos, retorno basico |
+| `TestFormatterIntegrationReal` | 5 | 4 formatos con scan result real + JSON roundtrip |
+| `TestAnalyzerIsolation` | 2 | Analyzer que falla no crashea el scan |
+
+**Archivo:** `tests/test_changed_only.py` — 11 tests
+
+Tests unitarios para `_get_changed_files()`:
+- Parseo de output NUL-separated
+- Renames (R status)
+- Filenames con espacios
+- Archivos eliminados excluidos
+- Staged, unstaged, untracked incluidos
+- Output vacio, git no encontrado, timeout, no-repo
+
+**Archivo:** `tests/test_main_module.py` — 8 tests
+
+- `python -m vigil --help` y `--version` funcionan
+- Conformidad BaseAnalyzer protocol para los 4 analyzers
+- Todos los analyzers retornan `list[Finding]`
+- Custom analyzer funciona con el engine
+
+### F5.4 — Version bump y documentacion
+
+- Version bumped de v0.5.0 a v0.6.0 en: `pyproject.toml`, `src/vigil/__init__.py`
+- Version actualizada en tests: `test_cli.py`, `test_cli_edge_cases.py`, `test_formatters.py`, `test_formatters_edge_cases.py`
+- `docs/github-notes/v0.6.0.md` — release notes
+- README actualizado con metricas v0.6.0
+
+### F5.QA — Auditoria de calidad y tests adicionales
+
+**Estado: COMPLETADA**
+
+Se realizo una auditoria exhaustiva del codigo de FASE 5. Se identificaron 7 issues y se escribieron 111 tests de regresion.
+
+**Archivo:** `tests/test_fase5_qa.py` — 111 tests
+
+| Categoria | Tests | Descripcion |
+|---|---|---|
+| Regresion: `_get_changed_files` | 10 | Logica de delete (DD, D_, _D), renames, copies, output truncado |
+| Regresion: Engine `include` | 1 | Documenta que `include` no se pasa a `collect_files` |
+| Regresion: YAML validation | 6 | YAML invalido (list, string, int, vacio, null, valido) |
+| Regresion: Clean project | 2 | Verifica 0 CRITICAL/HIGH y 0 SEC-* |
+| Regresion: `_should_run()` | 2 | Documenta que rules_filter es post-hoc en `_apply_rule_overrides` |
+| Edge cases | 14 | Dirs vacios, encoding (BOM, Latin-1, binario), espacios, anidamiento |
+| Falsos positivos | 8 | Auth (CORS, env vars, endpoints protegidos), Secrets, Tests |
+| Falsos negativos | 9 | Auth (CORS wildcard, JWT hardcoded, DELETE), Secrets, Tests |
+| CLI edge cases | 14 | Paths inexistentes, multiples, output anidado, init, rules, formatos |
+| Config + Integracion | 27 | CLI merge, estrategias, file discovery, engine overrides, ScanResult |
+
+**Issues documentados (no corregidos — V0 scope):**
+
+1. **`engine.py:120-126`** — `include` config field existe pero `_collect_files` no lo pasa a `collect_files()`. Test documenta el comportamiento.
+2. **`engine.py:133-136`** — `_should_run()` tiene `pass` para `rules_filter`. El filtrado ocurre en `_apply_rule_overrides()` en vez de pre-filtrar analyzers. Test documenta el comportamiento.
+3. **`loader.py:77`** — YAML que parsea a non-dict (list, string, int) lanza TypeError en `ScanConfig(**merged)`. No se maneja gracefully. Test verifica que lanza excepcion.
+4. **AUTH-005 en fixtures** — Suprimido porque las fixtures estan bajo `tests/` y `cors_allow_localhost=True` (default) suprime paths con "test". Test complementario verifica deteccion con `cors_allow_localhost=False`.
+5. **AUTH-002 en `/login`** — El proyecto limpio genera AUTH-002 en POST `/login` (by-design: login no tiene auth middleware). Usuarios pueden deshabilitar via rule override.
+
+**Totales post-QA FASE 5:**
+- Tests FASE 5: 182 (52 e2e + 11 changed-only + 8 main module + 111 QA)
+- Tests totales proyecto: 1518
+- 0 regressions en tests existentes
 
 ---
 
@@ -1052,4 +1171,4 @@ Pendiente de implementar:
 
 Pendiente de implementar:
 - F6.1 — Script para generar corpus de paquetes populares (top 5000 PyPI + npm)
-- F6.2 — Polish final: exit codes, --quiet, --verbose, --offline, --changed-only
+- F6.2 — Polish final

@@ -62,7 +62,11 @@ vigil-cli/
     conftest.py                   # Fixtures globales
     test_cli.py                   # Tests del CLI
     test_cli_edge_cases.py        # Edge cases del CLI
-    test_integration.py           # Tests de integracion end-to-end
+    test_integration.py           # Tests de integracion basicos
+    test_integration_e2e.py       # Tests end-to-end con fixtures reales (52 tests)
+    test_changed_only.py          # Tests de _get_changed_files() (11 tests)
+    test_main_module.py           # Tests de python -m vigil y BaseAnalyzer protocol (8 tests)
+    test_fase5_qa.py              # QA regression FASE 5 (111 tests)
     test_core/
       test_finding.py
       test_engine.py
@@ -126,13 +130,28 @@ vigil-cli/
         copies_env_example.py     #   Codigo que copia valores de .env.example
         secure_code.py            #   Codigo seguro (sin findings)
       tests/                      # Fixtures de test quality
-        vulnerable_tests.py       #   Tests Python con problemas (sin assertions, triviales, catch-all)
+        vulnerable_tests.py       #   Tests Python con problemas
         vulnerable_tests.js       #   Tests JavaScript con problemas
         clean_tests.py            #   Tests Python correctos (sin findings)
         clean_tests.js            #   Tests JavaScript correctos (sin findings)
         edge_cases_python.py      #   Casos borde Python (async, single-line, nested)
         edge_cases_js.js          #   Casos borde JavaScript (async, describe, nested)
         npm_tests.test.js         #   Tests npm/jest con problemas mixtos
+      integration/                # Fixtures end-to-end (FASE 5)
+        conftest.py               #   Previene recoleccion de test files en fixtures
+        insecure_project/         #   Proyecto AI-generated con vulnerabilidades (8 archivos)
+          app.py                  #     FastAPI con AUTH-001..005, AUTH-007, SEC-001/003/004
+          server.js               #     Express con AUTH-002..006, SEC-004
+          config.py               #     SEC-001, SEC-002, SEC-006
+          test_app.py             #     TEST-001..006
+          test_server.test.js     #     TEST-001, TEST-002, TEST-004, TEST-005
+          requirements.txt        #     DEP-003 (typosquatting)
+          package.json            #     DEP-003 (typosquatting)
+          .env.example            #     Valores placeholder para SEC-006 tracing
+        clean_project/            #   Proyecto limpio (0 falsos positivos)
+          app.py                  #     FastAPI con auth correcta, CORS restringido
+          test_app.py             #     Tests con assertions reales
+          requirements.txt        #     Dependencias legitimas
 ```
 
 ---

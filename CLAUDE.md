@@ -103,10 +103,10 @@ Every Finding must have:
 
 - **FASE 0** (DONE): Scaffolding, config, core engine, CLI, formatters, rule catalog — 350 tests
 - **FASE 1** (DONE): DependencyAnalyzer (parsers, registry client, similarity/typosquatting, popular packages corpus) — 120 tests, 470 total
-- **FASE 2**: AuthAnalyzer + SecretsAnalyzer (regex pattern matching for FastAPI/Flask/Express)
-- **FASE 3**: TestQualityAnalyzer (pytest/jest assertion checking, mock mirror detection)
-- **FASE 4**: Report formatters polish
-- **FASE 5**: Full integration, CLI wiring, test fixtures with realistic AI-generated code
+- **FASE 2** (DONE): AuthAnalyzer + SecretsAnalyzer (regex pattern matching for FastAPI/Flask/Express) — 961 tests total
+- **FASE 3** (DONE): TestQualityAnalyzer (pytest/jest assertion checking, mock mirror detection) — 1170 tests total
+- **FASE 4** (DONE): Report formatters polish — 1336 tests total
+- **FASE 5** (DONE): Full integration, CLI wiring, test fixtures with realistic AI-generated code — 1407 tests total
 - **FASE 6**: Popular packages data generation, polish
 
 ## Plan Documents
