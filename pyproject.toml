@@ -1,6 +1,6 @@
 [project]
 name = "vigil-ai-cli"
-version = "0.7.0"
+version = "1.0.0"
 description = "Security scanner for AI-generated code"
 readme = "README.md"
 license = {text = "MIT"}
@@ -40,3 +40,7 @@ pythonpath = ["src"]
 target-version = "py312"
 line-length = 100
 src = ["src"]
+
+[project.urls]
+Homepage = "https://diego303.github.io/vigil-docs/"
+Repository = "https://github.com/Diego303/vigil-cli"

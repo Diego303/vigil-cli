@@ -1,6 +1,6 @@
 # Catalogo de reglas
 
-vigil V0 incluye 26 reglas en 4 categorias. Cada regla tiene un ID unico, severidad por defecto, y referencias a estandares de seguridad cuando aplica.
+vigil incluye 26 reglas en 4 categorias (24 implementadas, 2 diferidas). Cada regla tiene un ID unico, severidad por defecto, y referencias a estandares de seguridad cuando aplica.
 
 Para listar todas las reglas desde la terminal:
 
@@ -66,7 +66,7 @@ requests==2.31.0
 | OWASP | LLM03 |
 | CWE | CWE-829 |
 
-**Que detecta:** El nombre del paquete es muy similar a un paquete popular (distancia de Levenshtein normalizada >= 0.85).
+**Que detecta:** El nombre del paquete es muy similar a un paquete popular (distancia de Damerau-Levenshtein normalizada >= 0.85). Detecta tanto typos por sustitucion como por transposicion de caracteres adyacentes.
 
 **Ejemplo de codigo vulnerable:**
 
@@ -144,7 +144,7 @@ flask==99.0.0        # Esta version no existe
 
 ## CAT-02: Auth & Permission Patterns
 
-> **Estado: IMPLEMENTADO** — El `AuthAnalyzer` esta activo desde v0.3.0. Todas las reglas AUTH-001 a AUTH-007 estan implementadas. Soporta Python (FastAPI/Flask) y JavaScript (Express).
+> **Estado: IMPLEMENTADO** — El `AuthAnalyzer` esta activo. Todas las reglas AUTH-001 a AUTH-007 estan implementadas. Soporta Python (FastAPI/Flask) y JavaScript (Express).
 
 Detecta patrones de autenticacion y autorizacion inseguros que los agentes de IA generan con frecuencia.
 
@@ -285,7 +285,7 @@ if hmac.compare_digest(user.password_hash, computed_hash):
 
 ## CAT-03: Secrets & Credentials
 
-> **Estado: IMPLEMENTADO** — El `SecretsAnalyzer` esta activo desde v0.3.0. Las reglas SEC-001 a SEC-004 y SEC-006 estan implementadas. SEC-005 esta diferida (requiere analisis de .gitignore). Soporta Python y JavaScript/TypeScript.
+> **Estado: IMPLEMENTADO** — El `SecretsAnalyzer` esta activo. Las reglas SEC-001 a SEC-004 y SEC-006 estan implementadas. SEC-005 esta diferida (requiere analisis de .gitignore). Soporta Python y JavaScript/TypeScript.
 
 Detecta secrets y credenciales que los agentes de IA copian de ejemplos o generan de forma insegura.
 
@@ -381,7 +381,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret-not-for-production")
 
 ## CAT-06: Test Quality
 
-> **Estado: IMPLEMENTADO** — El `TestQualityAnalyzer` esta activo desde v0.6.0. Todas las reglas TEST-001 a TEST-006 estan implementadas. Soporta pytest/unittest (Python) y jest/mocha (JavaScript/TypeScript).
+> **Estado: IMPLEMENTADO** — El `TestQualityAnalyzer` esta activo. Todas las reglas TEST-001 a TEST-006 estan implementadas. Soporta pytest/unittest (Python) y jest/mocha (JavaScript/TypeScript).
 
 Detecta tests que dan cobertura falsa — pasan pero no verifican nada real. Esto se conoce como "test theater".
 

@@ -175,6 +175,7 @@ Si no se especifican paths, analiza el directorio `tests/`.
 |--------|-------------|------|---------|-------------|
 | `--format` | `-f` | `human\|json` | `human` | Formato de salida |
 | `--min-assertions` | | int | `1` | Minimo de assertions por test |
+| `--offline` | | flag | false | No hacer HTTP requests a registries |
 | `--verbose` | `-v` | flag | false | Output detallado |
 
 ### Ejemplos

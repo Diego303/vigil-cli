@@ -31,15 +31,44 @@ def levenshtein_distance(s1: str, s2: str) -> int:
     return prev_row[-1]
 
 
+def damerau_levenshtein_distance(s1: str, s2: str) -> int:
+    """Optimal String Alignment distance (counts transpositions as 1 edit)."""
+    len1, len2 = len(s1), len(s2)
+    # Create matrix
+    d = [[0] * (len2 + 1) for _ in range(len1 + 1)]
+    for i in range(len1 + 1):
+        d[i][0] = i
+    for j in range(len2 + 1):
+        d[0][j] = j
+
+    for i in range(1, len1 + 1):
+        for j in range(1, len2 + 1):
+            cost = 0 if s1[i - 1] == s2[j - 1] else 1
+            d[i][j] = min(
+                d[i - 1][j] + 1,       # deletion
+                d[i][j - 1] + 1,       # insertion
+                d[i - 1][j - 1] + cost,  # substitution
+            )
+            # Transposition
+            if i > 1 and j > 1 and s1[i - 1] == s2[j - 2] and s1[i - 2] == s2[j - 1]:
+                d[i][j] = min(d[i][j], d[i - 2][j - 2] + cost)
+
+    return d[len1][len2]
+
+
 def normalized_similarity(s1: str, s2: str) -> float:
-    """Similaridad normalizada entre 0.0 y 1.0."""
+    """Similaridad normalizada entre 0.0 y 1.0.
+
+    Uses Damerau-Levenshtein distance which counts transpositions as 1 edit
+    (e.g., reqeusts -> requests = distance 1, not 2).
+    """
     s1_lower = s1.lower()
     s2_lower = s2.lower()
 
     if s1_lower == s2_lower:
         return 1.0
 
-    dist = levenshtein_distance(s1_lower, s2_lower)
+    dist = damerau_levenshtein_distance(s1_lower, s2_lower)
     max_len = max(len(s1), len(s2))
     if max_len == 0:
         return 1.0
@@ -92,10 +121,21 @@ def find_similar_popular(
 
     # Normalizacion de nombres para comparacion (PyPI normaliza - y _ como equivalentes)
     name_normalized = _normalize_package_name(name_lower, ecosystem)
+    name_len = len(name_normalized)
+
+    # Calcular maxima diferencia de longitud permitida por el threshold
+    # similarity = 1 - (dist / max_len), para threshold T: dist <= max_len * (1-T)
+    # El peor caso es cuando max_len = max(name_len, popular_len), y dist >= abs(len diff)
+    # Si abs(len_diff) > max_len * (1-T), no puede alcanzar el threshold
+    max_len_diff = int(name_len * (1 - threshold) / threshold) + 1
 
     for popular_name in popular_packages:
         popular_lower = popular_name.lower()
         popular_normalized = _normalize_package_name(popular_lower, ecosystem)
+
+        # Early rejection: length difference too large to meet threshold
+        if abs(len(popular_normalized) - name_len) > max_len_diff:
+            continue
 
         # Exact match tras normalizacion — no es typosquatting
         if name_normalized == popular_normalized:

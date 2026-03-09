@@ -252,7 +252,7 @@ class TestVersionAndHelp:
     def test_version(self, runner):
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
-        assert "0.7.0" in result.output
+        assert "1.0.0" in result.output
         assert "vigil" in result.output
 
     def test_help_shows_all_commands(self, runner):

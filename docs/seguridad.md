@@ -56,7 +56,7 @@ Estos problemas son **especificos del codigo generado por IA** y no son detectad
 5. En el siguiente `pip install`, se instala el paquete malicioso
 ```
 
-vigil detecta los 4 problemas del paso 2. Desde v0.6.0, los cuatro analyzers estan activos: Dependency (DEP), Auth (AUTH), Secrets (SEC) y Test Quality (TEST).
+vigil detecta los 4 problemas del paso 2. Los cuatro analyzers estan activos: Dependency (DEP), Auth (AUTH), Secrets (SEC) y Test Quality (TEST).
 
 ---
 

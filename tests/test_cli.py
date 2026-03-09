@@ -22,7 +22,7 @@ class TestCLI:
     def test_version(self):
         result = self.runner.invoke(main, ["--version"])
         assert result.exit_code == 0
-        assert "0.7.0" in result.output
+        assert "1.0.0" in result.output
 
     def test_scan_help(self):
         result = self.runner.invoke(main, ["scan", "--help"])
@@ -38,11 +38,11 @@ class TestCLI:
         assert "findings" in result.output
 
     def test_scan_nonexistent_dir(self, tmp_path):
-        """Scanning a nonexistent path within a clean dir produces no findings."""
+        """Scanning a nonexistent path exits with error code 2."""
         nonexistent = tmp_path / "nonexistent"
         result = self.runner.invoke(main, ["scan", str(nonexistent), "--offline"])
-        assert result.exit_code == 0  # No findings = success
-        assert "0 files" in result.output or "scanned" in result.output
+        assert result.exit_code == 2  # All paths nonexistent = error
+        assert "Path does not exist" in result.output
 
     def test_scan_json_format(self, tmp_path):
         (tmp_path / "app.py").write_text("x = 1")

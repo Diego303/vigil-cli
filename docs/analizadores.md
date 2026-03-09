@@ -47,7 +47,7 @@ Verifica la fecha de creacion del paquete. Si fue creado hace menos de `deps.min
 
 #### DEP-003 — Typosquatting candidate (HIGH)
 
-Compara el nombre de cada dependencia contra un corpus de paquetes populares usando distancia de Levenshtein normalizada. Si la similaridad es >= `deps.similarity_threshold` (default: 0.85), es un candidato a typosquatting.
+Compara el nombre de cada dependencia contra un corpus de paquetes populares usando distancia de Damerau-Levenshtein normalizada. Si la similaridad es >= `deps.similarity_threshold` (default: 0.85), es un candidato a typosquatting. A diferencia de Levenshtein clasico, Damerau-Levenshtein cuenta la transposicion de caracteres adyacentes como una sola operacion, mejorando la deteccion de typos como `reqeusts` → `requests`.
 
 ```
 # requirements.txt
@@ -81,8 +81,8 @@ flask==99.0.0     # Version no existe -> DEP-007 CRITICAL
 
 | Regla | Razon | Estimacion |
 |-------|-------|------------|
-| DEP-004 (unpopular) | Requiere API de estadisticas de descargas, no disponible en la metadata basica de PyPI/npm | V1 o FASE 6 |
-| DEP-006 (missing import) | Requiere parser de imports AST, fuera de scope V0 (regex-based) | V1 |
+| DEP-004 (unpopular) | Requiere API de estadisticas de descargas, no disponible en la metadata basica de PyPI/npm | Futuro |
+| DEP-006 (missing import) | Requiere parser de imports AST, fuera de scope actual (regex-based) | Futuro |
 
 ### Flujo de analisis
 
@@ -269,7 +269,7 @@ Detecta secrets y credenciales mal gestionados en codigo, con enfasis en patrone
 SecretsAnalyzer.analyze(files, config)
     |
     v
-[1. Compilar placeholder_patterns (30 regex)]
+[1. Compilar placeholder_patterns (32 regex)]
     |
     v
 [2. Cargar .env.example entries (si check_env_example=true)]
@@ -304,13 +304,14 @@ SecretsAnalyzer.analyze(files, config)
 
 ### Deteccion de placeholders (SEC-001)
 
-El analyzer viene con **30 patrones regex** de placeholders conocidos, configurables via `secrets.placeholder_patterns`:
+El analyzer viene con **32 patrones regex** de placeholders conocidos, configurables via `secrets.placeholder_patterns`:
 
 - Valores genericos: `changeme`, `TODO`, `FIXME`, `placeholder`, `xxx+`
 - Patrones con template: `your-*-here`, `replace-me`, `insert-*-here`, `put-*-here`, `add-*-here`
 - Prefijos de API keys: `sk-your*`, `pk_test_*`, `sk_test_*`, `sk_live_test*`
 - Valores tipicos de AI: `secret123`, `password123`, `supersecret`, `mysecret`, `my-secret-key`
 - Valores de ejemplo: `example.com`, `test-key`, `dummy-key`, `fake-key`, `sample-key`, `default-secret`
+- Valores de AWS/ejemplo: `EXAMPLE`, `AKIA` (AWS example access key pattern)
 
 ### Shannon entropy (SEC-002)
 
@@ -372,12 +373,12 @@ secrets:
   check_env_example: true
 
   # Patrones regex de placeholders para SEC-001
-  # (lista de 30 patrones por defecto — ver schema.py)
+  # (lista de 32 patrones por defecto — ver schema.py)
   placeholder_patterns:
     - "changeme"
     - "your-.*-here"
     - "replace-?me"
-    # ... (30 patrones por defecto)
+    # ... (32 patrones por defecto)
 ```
 
 ---
