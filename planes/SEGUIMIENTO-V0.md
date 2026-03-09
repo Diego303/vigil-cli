@@ -16,13 +16,37 @@
 | FASE 4 | Reports + Formatters | COMPLETADA (QA done) | 166 |
 | FASE 5 | Integration + Testing + Docs | COMPLETADA (QA done) | 182 |
 | FASE 6 | Data + Polish | COMPLETADA (QA done) | 188 |
+| V1 QA | Test exhaustivo + Fix de bugs | COMPLETADA | — |
 
 **Metricas actuales:**
 - Tests totales: 1706 (todos pasando, 0 warnings)
-- Cobertura reports module: 99% (209 statements, 3 missed)
-- Version: v0.7.0
+- Cobertura global: 97% (2175 statements, 64 missed)
+- Version: v1.0.0
 - Archivos fuente: 43
 - Archivos de test: 76
+
+### V1 QA — Test exhaustivo y correccion de bugs
+
+**Estado: COMPLETADA**
+
+Se ejecuto un test exhaustivo de 164 pruebas manuales en 18 fases cubriendo todos los subcomandos, formatos, flags, reglas, edge cases y rendimiento. Se encontraron 17 bugs, de los cuales 10 fueron corregidos, 5 no eran reproducibles, y 2 son limitaciones documentadas de V0.
+
+**Bugs criticos corregidos:**
+- **BUG-007**: Path inexistente ahora devuelve exit code 2 (era 0)
+- **BUG-002**: `vigil tests --offline` ahora funciona
+- **BUG-003**: AUTH-005 ya no produce falsos negativos en paths con substring "test"
+- **BUG-006**: AWS example keys (AKIA..., EXAMPLE) ahora detectadas como SEC-001
+- **BUG-008**: Redis connection strings (`redis://:pass@host`) ahora detectadas por SEC-003
+- **BUG-012**: `--rule` CLI ahora tiene prioridad sobre `enabled: false` en config
+- **BUG-001**: Typosquatting por transposicion (`reqeusts`) ahora detectado con Damerau-Levenshtein
+- **BUG-013**: Performance de similaridad mejorada ~3.4x (77s → 23s para 200 deps)
+- **BUG-009**: Config YAML con `fail_on` invalido ahora da error claro + exit 2
+
+**Archivos modificados:** `cli.py`, `engine.py`, `auth/analyzer.py`, `secrets/analyzer.py`, `placeholder_detector.py`, `similarity.py`, `loader.py`, `schema.py`
+
+**Reportes generados:**
+- `VIGIL-V1-TEST-REPORT.md` — Reporte completo del test exhaustivo
+- `VIGIL-V1-FIX-REPORT.md` — Reporte detallado de cada fix aplicado
 
 ---
 

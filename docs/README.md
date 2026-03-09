@@ -18,11 +18,12 @@ Bienvenido a la documentacion de **vigil**, el scanner de seguridad para codigo 
 | [Arquitectura](arquitectura.md) | Estructura interna, flujo del engine, protocolo de analyzers |
 | [Buenas practicas](buenas-practicas.md) | Recomendaciones para equipos que usan agentes de IA para generar codigo |
 | [Compliance y uso empresarial](compliance.md) | Alineacion con OWASP, CRA, SOC 2, ISO 27001, NIST y uso en pipelines empresariales |
+| [FAQ y Troubleshooting](faq.md) | Preguntas frecuentes, falsos positivos, rendimiento, encoding y problemas comunes |
 | [Contribuir](contribuir.md) | Guia para contribuir al proyecto, setup de desarrollo y testing |
 
 ## Estado del proyecto
 
-vigil esta en desarrollo activo. La version actual (v0.7.0) incluye:
+La version actual es **v1.0.0** (stable release). Incluye:
 
 - CLI completa con 5 subcomandos (`scan`, `deps`, `tests`, `init`, `rules`)
 - Motor de analisis con soporte para multiples analyzers
@@ -35,7 +36,7 @@ vigil esta en desarrollo activo. La version actual (v0.7.0) incluye:
 - 4 formatos de salida (human, JSON, JUnit XML, SARIF 2.1.0)
 - Sistema de configuracion con YAML, presets y overrides por CLI
 - Suite de integracion end-to-end con fixtures de codigo AI-generated real
-- QA exhaustivo: falsos positivos, falsos negativos, edge cases, regresiones
-- 1706 tests (99% cobertura en modulo reports)
+- QA exhaustivo: 164 pruebas manuales + 10 bugs corregidos en V1 QA
+- 1706 tests, 97% cobertura global
 
-Consulta el [SEGUIMIENTO-V0.md](../SEGUIMIENTO-V0.md) para el estado detallado.
+Consulta el [SEGUIMIENTO-V1.md](../SEGUIMIENTO-V1.md) para el estado actual y backlog.

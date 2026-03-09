@@ -39,6 +39,8 @@ DEFAULT_PLACEHOLDER_PATTERNS: list[str] = [
     r"default[-_]?secret",
     r"default[-_]?key",
     r"placeholder",
+    r"EXAMPLE",
+    r"AKIA[A-Z0-9]{16}",
 ]
 
 # Patrones de asignacion de secrets en codigo

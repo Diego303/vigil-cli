@@ -139,10 +139,12 @@ class ScanEngine:
     def _apply_rule_overrides(self, result: ScanResult) -> None:
         """Aplica overrides de reglas desde config."""
         filtered: list[Finding] = []
+        # CLI --rule flag has priority over config enabled: false
+        explicitly_requested = set(self.config.rules_filter) if self.config.rules_filter else set()
         for finding in result.findings:
             override = self.config.rules.get(finding.rule_id)
             if override:
-                if override.enabled is False:
+                if override.enabled is False and finding.rule_id not in explicitly_requested:
                     continue
                 if override.severity:
                     finding.severity = Severity(override.severity)

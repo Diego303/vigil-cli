@@ -37,7 +37,7 @@ Formato por defecto, optimizado para lectura en terminal. Incluye colores ANSI, 
 ### Ejemplo de salida
 
 ```
-  vigil v0.7.0 — scanning 42 files...
+  vigil v1.0.0 — scanning 42 files...
 
   ✗ CRITICAL  DEP-001  requirements.txt:14
     Package 'python-jwt-utils' does not exist in pypi.
@@ -57,7 +57,7 @@ Formato por defecto, optimizado para lectura en terminal. Incluye colores ANSI, 
 ### Salida limpia (sin findings)
 
 ```
-  vigil v0.7.0 — scanning 42 files...
+  vigil v1.0.0 — scanning 42 files...
 
   No findings.
 
@@ -95,7 +95,7 @@ Formato estructurado para procesamiento programatico, integracion con otras herr
 
 ```json
 {
-  "version": "0.7.0",
+  "version": "1.0.0",
   "files_scanned": 42,
   "duration_seconds": 1.2,
   "analyzers_run": ["dependency", "auth"],
@@ -196,7 +196,7 @@ Formato compatible con dashboards de CI/CD (Jenkins, GitLab CI, Azure DevOps, et
 <testsuites>
   <testsuite name="vigil" tests="2" failures="2" errors="0" time="1.200">
     <properties>
-      <property name="vigil.version" value="0.7.0" />
+      <property name="vigil.version" value="1.0.0" />
       <property name="vigil.files_scanned" value="42" />
       <property name="vigil.analyzers" value="dependency,auth" />
     </properties>
@@ -283,8 +283,8 @@ Static Analysis Results Interchange Format. Formato estandar de la industria par
       "tool": {
         "driver": {
           "name": "vigil",
-          "version": "0.7.0",
-          "semanticVersion": "0.7.0",
+          "version": "1.0.0",
+          "semanticVersion": "1.0.0",
           "informationUri": "https://github.com/org/vigil",
           "rules": [
             {

@@ -119,6 +119,14 @@ def scan(
         if not scan_paths:
             click.echo("No changed files to scan.", err=True)
             sys.exit(ExitCode.SUCCESS)
+    else:
+        # Validar que al menos un path existe
+        invalid = [p for p in scan_paths if not Path(p).exists()]
+        if invalid:
+            for p in invalid:
+                click.echo(f"Path does not exist: {p}", err=True)
+            if len(invalid) == len(scan_paths):
+                sys.exit(ExitCode.ERROR)
 
     # Ejecutar scan
     engine = ScanEngine(scan_config)
@@ -218,11 +226,13 @@ def deps(
     default="human",
 )
 @click.option("--min-assertions", type=int, default=1)
+@click.option("--offline", is_flag=True, help="Don't make HTTP requests to registries")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
 def check_tests(
     test_paths: tuple[str, ...],
     output_format: str,
     min_assertions: int,
+    offline: bool,
     verbose: bool,
 ) -> None:
     """Analyze test quality for empty assertions and test theater.
@@ -240,6 +250,7 @@ def check_tests(
     scan_config = load_config(
         cli_overrides={
             "output_format": output_format,
+            "offline": offline,
             "verbose": verbose,
             "categories": ["test-quality"],
         },

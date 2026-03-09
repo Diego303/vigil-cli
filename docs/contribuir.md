@@ -366,7 +366,7 @@ pytest -v
 | Logging | 3 |
 | **Total** | **1706** |
 
-Cobertura global: **~98%** (99% en modulo reports)
+Cobertura global: **97%** (99% en modulo reports)
 
 ---
 
@@ -416,8 +416,9 @@ vigil se desarrolla en fases incrementales:
 | **FASE 4** | Reports polish (formatters, summary, icons, SARIF 2.1.0) | Completada (QA done) |
 | **FASE 5** | Integracion, fixtures realistas, docs, QA exhaustivo | Completada (QA done) |
 | **FASE 6** | Popular packages corpus, polish final | Completada (QA done) |
+| **V1 QA** | Test exhaustivo (164 pruebas manuales) + 10 bug fixes | Completada |
 
-Consultar `SEGUIMIENTO-V0.md` para el estado detallado de cada fase.
+Consultar `SEGUIMIENTO-V1.md` para el estado actual y backlog. Para historial detallado de fases, ver `SEGUIMIENTO-V0.md`.
 
 ---
 

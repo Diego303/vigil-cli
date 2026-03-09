@@ -236,7 +236,9 @@ class AuthAnalyzer:
         if auth_config.cors_allow_localhost:
             import os
             parts = os.path.normpath(file_path).lower().replace("\\", "/").split("/")
-            if any(token in part for part in parts for token in ("dev", "test", "local", "example")):
+            dev_dirs = {"dev", "test", "local", "example", "tests", "testing"}
+            dev_prefixes = ("dev_", "test_", "local_", "example_")
+            if any(part in dev_dirs or part.startswith(dev_prefixes) for part in parts):
                 return None
 
         return Finding(

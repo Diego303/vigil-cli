@@ -69,6 +69,8 @@ class SecretsConfig(BaseModel):
             r"default[-_]?secret",
             r"default[-_]?key",
             "placeholder",
+            "EXAMPLE",
+            r"AKIA[A-Z0-9]{16}",
         ]
     )
 

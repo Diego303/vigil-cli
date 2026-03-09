@@ -628,13 +628,14 @@ class TestExitCodesCombinations:
         )
         assert result.exit_code == ExitCode.SUCCESS
 
-    def test_nonexistent_path_no_crash(self, runner, tmp_path):
-        """Path inexistente no crashea, produce 0 files scanned."""
+    def test_nonexistent_path_error_exit(self, runner, tmp_path):
+        """Path inexistente produce exit code 2 (error)."""
         nonexistent = str(tmp_path / "nonexistent")
         result = runner.invoke(
             main, ["scan", nonexistent, "--offline"]
         )
-        assert result.exit_code == ExitCode.SUCCESS
+        assert result.exit_code == ExitCode.ERROR
+        assert "Path does not exist" in result.output
 
     def test_deps_exit_code_with_findings(self, runner, tmp_path):
         """vigil deps con typosquatting produce exit 1."""
@@ -881,7 +882,7 @@ class TestOutputFormatsDeep:
         data = json.loads(result.output)
         assert "summary" in data
         assert "version" in data
-        assert data["version"] == "0.7.0"
+        assert data["version"] == "1.0.0"
 
     def test_sarif_results_have_rule_index(self, runner, project_with_findings):
         """SARIF results tienen ruleIndex valido."""

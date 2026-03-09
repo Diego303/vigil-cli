@@ -35,10 +35,10 @@ logger = structlog.get_logger()
 
 # Connection string patterns con credenciales embebidas
 _CONNECTION_STRING_PATTERNS: list[re.Pattern[str]] = [
-    # postgresql://user:password@host/db
+    # postgresql://user:password@host/db or redis://:password@host
     re.compile(
         r"""(?:postgresql|postgres|mysql|mariadb|mongodb|redis|amqp|rabbitmq)"""
-        r"""://([^:]+):([^@]+)@""",
+        r"""://([^:]*):([^@]+)@""",
         re.IGNORECASE,
     ),
     # mongodb+srv://user:password@host

@@ -28,7 +28,7 @@ vigil-cli/
         analyzer.py               # DependencyAnalyzer (DEP-001..007)
         parsers.py                # Parsers para requirements.txt, pyproject.toml, package.json
         registry_client.py        # Cliente HTTP para PyPI/npm con cache local
-        similarity.py             # Levenshtein + corpus de paquetes populares
+        similarity.py             # Damerau-Levenshtein + corpus de paquetes populares
       auth/                       # CAT-02: Auth Analyzer
         __init__.py
         analyzer.py               # AuthAnalyzer (AUTH-001..007)
@@ -157,7 +157,7 @@ vigil-cli/
   data/
     popular_pypi.json             # Top 5000 PyPI packages (descargas semanales)
     popular_npm.json              # Top 3454 npm packages (descargas semanales)
-    placeholder_patterns.json     # 30 patrones regex de placeholders
+    placeholder_patterns.json     # 32 patrones regex de placeholders
   scripts/
     fetch_popular_packages.py     # Script para regenerar corpus de paquetes populares
 ```
@@ -410,7 +410,7 @@ DependencyAnalyzer.analyze(files, config)
 |--------|----------------|
 | `parsers.py` | Parsea requirements.txt, pyproject.toml, package.json en `DeclaredDependency` |
 | `registry_client.py` | HTTP client para PyPI/npm con cache en disco (`~/.cache/vigil/registry/`) |
-| `similarity.py` | Levenshtein distance, normalizacion PEP 503, corpus de paquetes populares |
+| `similarity.py` | Damerau-Levenshtein distance, normalizacion PEP 503, corpus de paquetes populares |
 | `analyzer.py` | Orquesta parsers + registry + similarity, genera findings |
 
 ### Reglas implementadas
@@ -423,7 +423,7 @@ DependencyAnalyzer.analyze(files, config)
 | DEP-005 | Si | Sin repositorio fuente |
 | DEP-007 | Si | Version pinneada no existe |
 
-### Reglas diferidas (V1)
+### Reglas diferidas
 
 | Regla | Razon |
 |-------|-------|

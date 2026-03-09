@@ -153,7 +153,7 @@ secrets:
 
   # Patrones regex de placeholders conocidos
   # Si un valor asignado a una variable sensible coincide con estos patrones, genera SEC-001
-  # El default incluye 30 patrones (ver schema.py para la lista completa)
+  # El default incluye 32 patrones (ver schema.py para la lista completa)
   placeholder_patterns:
     - "changeme"
     - "your[-_].*[-_]here"
@@ -185,6 +185,8 @@ secrets:
     - "default[-_]?secret"
     - "default[-_]?key"
     - "placeholder"
+    - "EXAMPLE"
+    - "AKIA[A-Z0-9]{16}"
 ```
 
 ### Test quality (`tests`)

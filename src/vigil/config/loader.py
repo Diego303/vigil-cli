@@ -79,11 +79,19 @@ def load_config(
         except (yaml.YAMLError, OSError) as e:
             logger.error("config_parse_error", path=str(resolved_path), error=str(e))
 
+    # 1b. Validate YAML data alone first (before CLI overrides mask errors)
+    if file_data:
+        _validate_yaml_fields(file_data, resolved_path)
+
     # 2. Merge CLI overrides sobre file_data
     merged = _merge_cli_overrides(file_data, cli_overrides)
 
     # 3. Validar con Pydantic
-    return ScanConfig(**merged)
+    from pydantic import ValidationError
+    try:
+        return ScanConfig(**merged)
+    except ValidationError as e:
+        raise ValueError(f"Invalid configuration: {e}") from e
 
 
 def _merge_cli_overrides(file_data: dict, cli_overrides: dict) -> dict:
@@ -147,6 +155,23 @@ def _merge_cli_overrides(file_data: dict, cli_overrides: dict) -> dict:
         data["deps"] = deps
 
     return data
+
+
+_VALID_FAIL_ON = {"critical", "high", "medium", "low", "info"}
+
+
+def _validate_yaml_fields(data: dict, config_path: Path | None) -> None:
+    """Validates critical YAML fields before CLI overrides are applied."""
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"Config file {config_path}: expected a YAML mapping, got {type(data).__name__}"
+        )
+    fail_on = data.get("fail_on")
+    if fail_on is not None and str(fail_on) not in _VALID_FAIL_ON:
+        raise ValueError(
+            f"Config file {config_path}: invalid fail_on '{fail_on}'. "
+            f"Must be one of: {', '.join(sorted(_VALID_FAIL_ON))}"
+        )
 
 
 def _yaml_list(items: list[str]) -> str:

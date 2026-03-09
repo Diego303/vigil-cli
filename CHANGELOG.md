@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-03-09
+
+First stable release. Exhaustive QA testing (164 tests across 18 phases), 10 bugs fixed, 0 regressions. 1706 automated tests, 97% coverage.
+
+### Added
+
+- **Damerau-Levenshtein distance** for typosquatting detection — transposition typos like `reqeusts` (swap of `ue` → `eu`) are now detected as similar to `requests` (0.875 similarity, above 0.85 threshold). Previously Levenshtein-only distance scored this as 0.75 (below threshold).
+- **AWS example key detection** — placeholder patterns `EXAMPLE` and `AKIA[A-Z0-9]{16}` added to SEC-001 detection. AWS example keys from documentation (`AKIAIOSFODNN7EXAMPLE`) are now flagged as placeholder secrets.
+- **Redis connection string detection** — SEC-003 now detects `redis://:password@host` format (password-only, no username). Previously required both `user:password` format.
+- **`vigil tests --offline`** — the `tests` subcommand now accepts `--offline` flag for consistency with `scan` and `deps`.
+- **Path existence validation** — `vigil scan /nonexistent/path` now exits with code 2 and a clear error message. Previously silently returned exit 0 with "0 findings".
+- **YAML config validation** — invalid `fail_on` values in `.vigil.yaml` (e.g., `fail_on: nonexistent`) now produce a clear error message and exit code 2 instead of being silently ignored.
+- **CLI `--rule` priority over config** — `--rule AUTH-003` now overrides `enabled: false` in `.vigil.yaml`, following the standard defaults < config < CLI precedence.
+
+### Fixed
+
+- **AUTH-005 false negatives on paths containing "test" substring** — CORS dev-path suppression heuristic changed from substring matching (`"test" in part`) to exact segment matching (`part in {"test", "dev", ...}`) plus common prefixes (`dev_`, `test_`). Paths like `/vigil-test/` or `/contest/` no longer suppress CORS findings.
+- **Similarity search performance** — added length-based early rejection and replaced dual Levenshtein+DL computation with single Damerau-Levenshtein pass. 200 dependencies against 5000-package corpus: ~77s → ~23s (3.4x improvement).
+
+### Changed
+
+- Version bump from 0.7.0 to 1.0.0 — all version strings updated across source, tests, and documentation.
+
 ## [0.7.0] — 2026-03-08
 
 ### Added
